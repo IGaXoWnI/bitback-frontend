@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { Link } from "react-router-dom"; 
 
 
-
-function HomePage() {
+function WelcomePage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
@@ -77,9 +76,9 @@ function HomePage() {
             Join BitBack and discover restaurants & shops offering surplus food at reduced prices. Fight waste, enjoy great food, and save money.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row justify-center md:justify-start space-y-4 sm:space-y-0 sm:space-x-4">
-            <button className="px-8 py-4 bg-[#02615E] text-white font-medium rounded-lg shadow-lg hover:bg-[#037d78] transform hover:-translate-y-1 transition-all">
+            <a href="/home"><button className="px-8 py-4 bg-[#02615E] text-white font-medium rounded-lg shadow-lg hover:bg-[#037d78] transform hover:-translate-y-1 transition-all">
               Find Meals Near You
-            </button>
+            </button></a>
             <button className="px-8 py-4 border border-[#02615E] text-[#02615E] font-medium rounded-lg hover:bg-[#e9e3e0] transform hover:-translate-y-1 transition-all">
               How It Works
             </button>
@@ -234,6 +233,7 @@ function HomePage() {
             </p>
             <p className="mt-6 font-semibold text-[#02615E]">— Mahatma Gandhi</p>
           </div>
+         
         </div>
       </div>
 
@@ -245,4 +245,4 @@ function HomePage() {
   
 }
 
-export default HomePage;
+export default WelcomePage;

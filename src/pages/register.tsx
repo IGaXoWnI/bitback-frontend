@@ -7,15 +7,17 @@ function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const role = "Consumer";
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     try {
-      const response = await api.post("/register", { name, email, password });
+      const response = await api.post("/register", { name, email, password ,role });
       const token = response.data.token;
       localStorage.setItem("token", token);
+      alert("Login successful!");
       window.location.href = "/";
     } catch (err) {
       setError("An error occurred during registration. Please try again.");

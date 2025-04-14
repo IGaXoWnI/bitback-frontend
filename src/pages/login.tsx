@@ -1,11 +1,20 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../api.tsx"; 
 
 function Login() {
+  const navigate = useNavigate();
+  const [showLocationModal, setShowLocationModal] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+
+  const handleLoginSuccess = () => {
+    // Your authentication logic
+    
+    // Pass extra state to indicate we're coming from login
+    navigate('/home', { state: { fromLogin: true } });
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -13,9 +22,15 @@ function Login() {
 
     try {
       const response = await api.post("/login", { email, password });
-      const token = response.data.token;
+      console.log(response);
+      
+      const role = response.data.user.role;
+      const token = response.data.autorisations.token;
+      
+      localStorage.setItem("role", role);
       localStorage.setItem("token", token);
-      window.location.href = "/";
+      handleLoginSuccess();
+      setShowLocationModal(true);
     } catch (err) {
       setError("Invalid email or password. Please try again.");
     }
