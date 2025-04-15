@@ -217,7 +217,9 @@ function WelcomePage() {
             <p className="text-white/80 text-lg max-w-3xl mx-auto mb-10">
               Partner with BitBack to make a real difference. Together, we can create a world where all food produced is food consumed.
             </p>
-            <button className="px-8 py-4 bg-white text-[#02615E] font-medium rounded-lg hover:bg-[#F9F3F0] transition-colors duration-300 shadow-md">
+            <button 
+              onClick={() => window.location.href = '/partner-signup'} 
+              className="px-8 py-4 bg-white text-[#02615E] font-medium rounded-lg hover:bg-[#F9F3F0] transition-colors duration-300 shadow-md">
               Become a Partner
             </button>
 

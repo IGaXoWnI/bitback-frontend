@@ -6,6 +6,7 @@ import WelcomePage from "./pages/welcomePage";
 import HomePage from "./pages/Home";
 import DetailPage from "./pages/detailPage";
 import LocationMap from "./components/LocationMap";
+import PartnerSignupPage from "./pages/partnerSignupPage";
 
 
 const AppRoutes: React.FC = () => {
@@ -17,6 +18,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/home" element={<HomePage />} /> {/* Home route */}
       <Route path="/item/:id" element={<DetailPage />} />
       <Route path="/map" element={<LocationMap />} />
+      <Route path="/partner-signup" element={<PartnerSignupPage />} /> {/* Fallback route */}
     </Routes>
   );
 };
