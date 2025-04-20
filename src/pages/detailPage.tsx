@@ -1,5 +1,6 @@
 import { useState, useEffect, JSX } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import Navbar from '../components/Navbar'; // Import the Navbar component
 
 // Interface for food item details
 interface FoodItemDetail {
@@ -128,33 +129,8 @@ function DetailPage(): JSX.Element {
 
   return (
     <div className="min-h-screen bg-[#F9F3F0]">
-      {/* Header with back button */}
-      <header className="bg-white shadow-sm sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center">
-              <button 
-                onClick={() => navigate(-1)} 
-                className="p-2 rounded-md text-gray-500 hover:text-[#02615E] hover:bg-gray-100 mr-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <h1 className="text-2xl font-bold text-[#02615E]">BitBack</h1>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <button className="hidden md:block px-4 py-2 text-[#02615E] font-medium hover:bg-[#02615E]/10 rounded-md transition">
-                Log In
-              </button>
-              <button className="px-4 py-2 bg-[#02615E] text-white font-medium rounded-md hover:bg-[#024e4b] transition shadow-sm">
-                Sign Up
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Replace the header with imported Navbar */}
+      <Navbar />
 
       {/* Main content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

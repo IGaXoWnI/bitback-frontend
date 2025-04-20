@@ -1,72 +1,169 @@
-import { useState } from 'react';
-import { Link } from "react-router-dom"; 
-
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from "react-router-dom";
 
 function WelcomePage() {
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isNavbarVisible, setIsNavbarVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+    setIsLoggedIn(!!token);
+    setUserRole(role);
+  }, []);
+
+  useEffect(() => {
+    const controlNavbar = () => {
+      if (typeof window !== 'undefined') {
+        if (window.scrollY > lastScrollY && window.scrollY > 100) { 
+          setIsNavbarVisible(false);
+        } 
+        else if (window.scrollY < lastScrollY || window.scrollY < 10) {
+          setIsNavbarVisible(true);
+        }
+        setLastScrollY(window.scrollY);
+      }
+    };
+
+    window.addEventListener('scroll', controlNavbar);
+
+    return () => {
+      window.removeEventListener('scroll', controlNavbar);
+    };
+  }, [lastScrollY]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('user');
+    
+    setIsLoggedIn(false);
+    setUserRole(null);
+    
+    setIsDropdownOpen(false);
+    
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#F9F3F0] relative">
-      {/* Floating navbar */}
-      <nav className="absolute top-0 left-0 right-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+      <nav className={`fixed top-0 left-0 right-0 z-50 bg-transparent transition-transform duration-300 ${
+        isNavbarVisible ? 'transform translate-y-0' : 'transform -translate-y-full'
+      }`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <span className="text-3xl font-extrabold text-[#02615E]">
-                BitBack
-              </span>
-            </div>
-            <div className="hidden md:flex items-center space-x-10">
-              <a href="#" className="text-[#02615E] hover:text-[#037d78] font-medium">How it works</a>
-              <a href="#" className="text-[#02615E] hover:text-[#037d78] font-medium">Restaurants</a>
-              <a href="#" className="text-[#02615E] hover:text-[#037d78] font-medium">About us</a>
-              <a href="#" className="text-[#02615E] hover:text-[#037d78] font-medium">Business</a>
-            </div>
-            <div className="hidden md:flex items-center space-x-4">
-              <Link to="/login" className="px-5 py-2.5 font-medium text-[#02615E] rounded-lg hover:bg-[#e9e3e0] transition-all inline-block">
-                Login
-              </Link>
-              <Link to="/register" className="px-5 py-2.5 bg-[#02615E] text-white font-medium rounded-lg shadow-md hover:bg-[#037d78] transition-all inline-block">
-                Sign up
+              <Link to="/" className="flex-shrink-0 flex items-center">
+                <span className="text-2xl font-bold text-[#02615E]">BitBack</span>
               </Link>
             </div>
-            <div className="md:hidden">
-              <button 
+
+            <div className="hidden md:flex items-center">
+              {isLoggedIn ? (
+                <div className="ml-3 relative">
+                  <button
+                    id="avatarButton"
+                    className="bg-[#02615E] text-white p-2 rounded-full flex items-center justify-center focus:outline-none"
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                  
+                  {isDropdownOpen && (
+                    <div 
+                      className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200"
+                    >
+                      {userRole === 'merchant' && (
+                        <Link 
+                          to="/merchant-dashboard" 
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setIsDropdownOpen(false)}
+                        >
+                          Dashboard
+                        </Link>
+                      )}
+                      {userRole === 'customer' && (
+                        <Link 
+                          to="/orders" 
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setIsDropdownOpen(false)}
+                        >
+                          My Orders
+                        </Link>
+                      )}
+                      <Link 
+                        to="/profile" 
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setIsDropdownOpen(false)}
+                      >
+                        Profile
+                      </Link>
+                      <Link 
+                        to="/settings" 
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setIsDropdownOpen(false)}
+                      >
+                        Settings
+                      </Link>
+                      <div className="border-t border-gray-100 my-1"></div>
+                      <button 
+                        onClick={handleLogout}
+                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                      >
+                        Sign out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex space-x-4">
+                  <Link 
+                    to="/login" 
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-[#02615E] bg-[#02615E]/10 hover:bg-[#02615E]/20"
+                  >
+                    Sign in
+                  </Link>
+                  <Link 
+                    to="/register" 
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#02615E] hover:bg-[#02615E]/90"
+                  >
+                    Sign up
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            <div className="md:hidden flex items-center">
+              <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="p-2 rounded-md text-[#02615E]"
+                className="p-2 rounded-md text-gray-500 hover:text-gray-700 focus:outline-none"
               >
                 <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  {isMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  )}
                 </svg>
               </button>
             </div>
           </div>
         </div>
-        
-{/* Mobile menu */}
-{isMenuOpen && (
-  <div className="md:hidden bg-white shadow-lg rounded-b-xl mx-4 mt-2 p-4 animate-fadeIn">
-    <div className="flex flex-col space-y-4">
-      <a href="#" className="px-3 py-2 text-[#02615E] hover:bg-[#F9F3F0] rounded-md">How it works</a>
-      <a href="#" className="px-3 py-2 text-[#02615E] hover:bg-[#F9F3F0] rounded-md">Restaurants</a>
-      <a href="#" className="px-3 py-2 text-[#02615E] hover:bg-[#F9F3F0] rounded-md">About us</a>
-      <a href="#" className="px-3 py-2 text-[#02615E] hover:bg-[#F9F3F0] rounded-md">Business</a>
-      <div className="border-t border-gray-200 pt-4 flex flex-col space-y-3">
-        <Link to="/login" className="w-full px-4 py-2.5 text-[#02615E] rounded-lg hover:bg-[#F9F3F0] transition-all text-center block">
-          Login
-        </Link>
-        <Link to="/register" className="w-full px-4 py-2.5 bg-[#02615E] text-white rounded-lg shadow-md hover:bg-[#037d78] transition-all text-center block">
-          Sign up
-        </Link>
-      </div>
-    </div>
-  </div>
-)}
+
+        {isMenuOpen && (
+          <div className="md:hidden bg-white px-2 pt-2 pb-3 shadow-lg">
+          </div>
+        )}
       </nav>
 
-      {/* Main hero section (exactly 100vh) */}
       <div className="h-screen flex flex-col md:flex-row items-center justify-center px-6 md:px-12 lg:px-24">
-        {/* Left content */}
         <div className="w-full md:w-1/2 md:pr-12 mt-20 md:mt-0 text-center md:text-left">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#02615E] leading-tight">
             <span className="inline-block mb-3">Save Food,</span><br />
@@ -84,7 +181,6 @@ function WelcomePage() {
             </button>
           </div>
           
-          {/* Stats */}
           <div className="mt-12 grid grid-cols-3 gap-4">
             <div className="text-center">
               <p className="text-3xl font-bold text-[#02615E]">5M+</p>
@@ -101,13 +197,11 @@ function WelcomePage() {
           </div>
         </div>
 
-        {/* Right content - Image */}
         <div className="hidden md:block w-1/2 h-4/5 relative">
           <div className="absolute -top-12 -left-12 w-72 h-72 bg-[#02615E]/20 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
           <div className="absolute -bottom-12 -right-12 w-72 h-72 bg-[#038683]/20 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
           <div className="absolute bottom-32 left-20 w-72 h-72 bg-[#F9F3F0]/80 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
           
-          {/* Main image container */}
           <div className="relative z-10 h-full w-full flex items-center justify-center">
             <div className="w-[90%] h-[90%] rounded-3xl overflow-hidden bg-white shadow-2xl p-4">
               <div className="w-full h-full rounded-2xl overflow-hidden flex items-center justify-center bg-gradient-to-tr from-[#F9F3F0] to-white">
@@ -118,10 +212,8 @@ function WelcomePage() {
                     className="absolute inset-0 w-full h-full object-cover"
                   />
                   
-                  {/* Optional overlay for premium look */}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#02615E]/30 to-transparent opacity-60"></div>
                   
-                  {/* Optional caption */}
                   <div className="absolute bottom-6 left-6 right-6 text-white">
                     <p className="text-xl font-semibold drop-shadow-md">Delicious meals, reduced prices</p>
                     <p className="text-sm opacity-90">Save up to 50% at local restaurants</p>
@@ -133,10 +225,8 @@ function WelcomePage() {
         </div>
       </div>
 
-      {/* Business Solutions Section */}
       <div className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Section Header */}
           <div className="text-center mb-16">
             <h2 className="text-4xl font-extrabold text-[#02615E] tracking-tight sm:text-5xl">
               OUR BUSINESS SOLUTIONS
@@ -146,9 +236,7 @@ function WelcomePage() {
             </p>
           </div>
 
-          {/* Business Solutions Grid */}
           <div className="mt-16 grid gap-16 lg:grid-cols-3 lg:gap-x-8 lg:gap-y-12">
-            {/* Solution 1: Surprise Bags */}
             <div className="relative rounded-2xl overflow-hidden group">
               <div className="h-96 bg-[#F9F3F0] rounded-2xl p-8 shadow-xl transition-transform duration-300 group-hover:shadow-2xl group-hover:-translate-y-2">
                 <div className="h-16 w-16 rounded-full bg-[#02615E]/10 flex items-center justify-center mb-6">
@@ -168,7 +256,6 @@ function WelcomePage() {
               </div>
             </div>
 
-            {/* Solution 2: BitBack Platform */}
             <div className="relative rounded-2xl overflow-hidden group">
               <div className="h-96 bg-[#F9F3F0] rounded-2xl p-8 shadow-xl transition-transform duration-300 group-hover:shadow-2xl group-hover:-translate-y-2">
                 <div className="h-16 w-16 rounded-full bg-[#02615E]/10 flex items-center justify-center mb-6">
@@ -188,7 +275,6 @@ function WelcomePage() {
               </div>
             </div>
 
-            {/* Solution 3: Date Labeling Initiative */}
             <div className="relative rounded-2xl overflow-hidden group">
               <div className="h-96 bg-[#F9F3F0] rounded-2xl p-8 shadow-xl transition-transform duration-300 group-hover:shadow-2xl group-hover:-translate-y-2">
                 <div className="h-16 w-16 rounded-full bg-[#02615E]/10 flex items-center justify-center mb-6">
@@ -209,7 +295,6 @@ function WelcomePage() {
             </div>
           </div>
 
-          {/* CTA Section */}
           <div className="mt-24 bg-[#02615E] rounded-2xl p-12 text-center shadow-xl relative">
             <h3 className="text-3xl font-bold text-white mb-6">
               Join the Movement Against Food Waste
@@ -223,12 +308,10 @@ function WelcomePage() {
               Become a Partner
             </button>
 
-            {/* Floating elements */}
             <div className="absolute left-12 top-12 w-32 h-32 bg-white rounded-full mix-blend-overlay filter blur-2xl opacity-10"></div>
             <div className="absolute right-12 bottom-12 w-32 h-32 bg-white rounded-full mix-blend-overlay filter blur-2xl opacity-10"></div>
           </div>
 
-          {/* Testimonial */}
           <div className="mt-24 text-center">
             <p className="text-2xl italic text-gray-600 max-w-4xl mx-auto">
               "The food you waste is the food you could have used to save a life somewhere, sometime."
@@ -239,12 +322,10 @@ function WelcomePage() {
         </div>
       </div>
 
-      {/* Floating elements */}
       <div className="absolute top-40 left-10 w-24 h-24 bg-[#02615E] rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
      
     </div>
   );
-  
 }
 
 export default WelcomePage;

@@ -3,8 +3,8 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import FoodItemCard from '../components/box_card';
 import FilterSidebar from '../components/filterSideBar';
 import LocationModal from '../components/LocationModal';
+import Navbar from '../components/Navbar'; 
 
-// Sample data for food items
 const foodItems = [
   {
     id: "1",
@@ -110,80 +110,9 @@ function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F9F3F0]">
-      {/* Navbar - Matching the same design as welcome page */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Link to="/" className="text-3xl font-extrabold text-[#02615E]">
-                BitBack
-              </Link>
-            </div>
-            <div className="hidden md:flex items-center space-x-10">
-              <a href="#" className="text-[#02615E] hover:text-[#037d78] font-medium">How it works</a>
-              <a href="#" className="text-[#02615E] hover:text-[#037d78] font-medium">Restaurants</a>
-              <a href="#" className="text-[#02615E] hover:text-[#037d78] font-medium">About us</a>
-              <a href="#" className="text-[#02615E] hover:text-[#037d78] font-medium">Business</a>
-            </div>
-            
-            <div className="md:flex items-center space-x-4">
-              {/* Location button */}
-              <button 
-                onClick={() => setShowLocationModal(true)}
-                className="flex items-center space-x-2 text-gray-700 hover:text-[#02615E]"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span className="text-sm">Set Location</span>
-              </button>
-              
-              {/* Profile button for logged in user */}
-              <button className="hidden md:block p-1 rounded-full text-[#02615E] hover:bg-[#e9e3e0] hover:text-[#037d78]">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </button>
-            </div>
-            
-            <div className="md:hidden">
-              <button 
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="p-2 rounded-md text-[#02615E]"
-              >
-                <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-        
-        {/* Mobile menu */}
-        {isMenuOpen && (
-          <div className="md:hidden bg-white shadow-lg rounded-b-xl mx-4 mt-2 p-4 animate-fadeIn">
-            <div className="flex flex-col space-y-4">
-              <a href="#" className="px-3 py-2 text-[#02615E] hover:bg-[#F9F3F0] rounded-md">How it works</a>
-              <a href="#" className="px-3 py-2 text-[#02615E] hover:bg-[#F9F3F0] rounded-md">Restaurants</a>
-              <a href="#" className="px-3 py-2 text-[#02615E] hover:bg-[#F9F3F0] rounded-md">About us</a>
-              <a href="#" className="px-3 py-2 text-[#02615E] hover:bg-[#F9F3F0] rounded-md">Business</a>
-              
-              <button 
-                onClick={() => setShowLocationModal(true)}
-                className="flex items-center px-3 py-2 text-[#02615E] hover:bg-[#F9F3F0] rounded-md"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span>Set Location</span>
-              </button>
-            </div>
-          </div>
-        )}
-      </nav>
+    <div className="min-h-screen bga-[#F9F3F0]">
+      {/* Replace the existing nav with imported Navbar */}
+      <Navbar />
 
       {/* Only render content when page is loaded */}
       {isPageLoaded && (
