@@ -37,7 +37,7 @@ function CenterMapWithRadius({ position, radius }: { position: [number, number],
 
 interface LocationMapProps {
   isModal?: boolean;
-  onLocationSet?: () => void;
+  onLocationSet?: (lat: string, lng: string, radius: string) => void; // Updated this line
   compact?: boolean;
 }
 
@@ -94,9 +94,20 @@ const LocationMap: React.FC<LocationMapProps> = ({
     };
   }, []);
   
+  // Update handleFindFood to send location data
   const handleFindFood = () => {
+    if (!position) return;
+    
+    // Use the radius value (in km) as the zone value
+    const radiusKm = (radius / 1000).toFixed(1);
+    
     if (onLocationSet) {
-      onLocationSet();
+      // Pass location data to parent component with radius as zone
+      onLocationSet(
+        position[0].toString(),
+        position[1].toString(),
+        radiusKm // Use radius as zone
+      );
     } else {
       navigate('/home');
     }

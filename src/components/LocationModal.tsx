@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import LocationMap from './LocationMap';
+import api from '../api'; // Import your API client
 
 interface LocationModalProps {
   isOpen: boolean;
@@ -7,7 +9,10 @@ interface LocationModalProps {
 }
 
 const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
+  const navigate = useNavigate();
   const [isMapReady, setIsMapReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     let timer: number | null = null;
@@ -25,6 +30,46 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
       if (timer) window.clearTimeout(timer);
     };
   }, [isOpen]);
+  
+  // Handle location data from the map
+  const handleLocationData = async (lat: string, lng: string, radius: string) => {
+    // Set loading state
+    setIsLoading(true);
+    
+    // First close the modal to prevent it from reappearing
+    onClose();
+    navigate('/home');
+    
+    try {
+      // Send location data to API
+      const response = await api.post('user/update-location', {
+        latitude: lat,
+        longitude: lng,
+        zone: radius
+      });
+      
+      // If successful, update localStorage and navigate
+      if (response.data.success) {
+        // Update user data in localStorage
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        localStorage.setItem('user', JSON.stringify({
+          ...userData,
+          latitude: lat,
+          longitude: lng,
+          searchRadius: radius
+        }));
+        
+        // Navigate to home page after successful update
+        navigate('/home');
+      } else {
+        console.error('API error:', response.data.message);
+      }
+    } catch (err) {
+      console.error('Error updating location:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   if (!isOpen) return null;
   
@@ -45,7 +90,7 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
         {isMapReady ? (
           <LocationMap 
             isModal={true} 
-            onLocationSet={onClose} 
+            onLocationSet={handleLocationData} 
             compact={true} 
           />
         ) : (
