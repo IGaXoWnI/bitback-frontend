@@ -15,10 +15,7 @@ function Register() {
 
     try {
       const response = await api.post("/register", { name, email, password ,role });
-      const token = response.data.token;
-      localStorage.setItem("token", token);
-      alert("Login successful!");
-      window.location.href = "/";
+      window.location.href = "/login";
     } catch (err) {
       setError("An error occurred during registration. Please try again.");
     }
