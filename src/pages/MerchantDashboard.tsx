@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../api';
+import { Offer, Order, NewOfferForm } from '../types/merchant';
 
 // Import components
 import Header from '../components/merchant/Layout/Header';
@@ -9,56 +11,13 @@ import OffersContent from '../components/merchant/Offers/OffersContent';
 import OrdersContent from '../components/merchant/Orders/OrdersContent';
 import SettingsContent from '../components/merchant/Settings/SettingsContent';
 
-// Define type interfaces
-interface Offer {
-  id: number;
-  title: string;
-  originalPrice: number;
-  discountedPrice: number;
-  quantity: number;
-  expiresAt: string;
-  status: 'Active' | 'Inactive' | 'Sold Out';
-}
-
-interface Order {
-  id: string;
-  customer: string;
-  item: string;
-  date: string;
-  pickupTime: string;
-  status: 'Pending' | 'Ready' | 'Completed' | 'Cancelled';
-  total: string;
-}
-
-interface NewOfferForm {
-  title: string;
-  description: string;
-  originalPrice: string;
-  discountedPrice: string;
-  quantity: string;
-  expiryDate: string;
-  expiryTime: string;
-}
-
-// Sample data
-const sampleOffers: Offer[] = [
-  { id: 1, title: 'Surprise Bag - Bakery', originalPrice: 24.99, discountedPrice: 8.99, quantity: 12, expiresAt: '2025-04-19T18:00:00', status: 'Active' },
-  { id: 2, title: 'Pastry Assortment Box', originalPrice: 19.99, discountedPrice: 7.50, quantity: 8, expiresAt: '2025-04-19T19:30:00', status: 'Active' },
-  { id: 3, title: 'Sandwich Lunch Pack', originalPrice: 15.99, discountedPrice: 5.99, quantity: 5, expiresAt: '2025-04-19T17:00:00', status: 'Sold Out' },
-  { id: 4, title: 'Fresh Bread Basket', originalPrice: 12.99, discountedPrice: 4.50, quantity: 0, expiresAt: '2025-04-19T18:30:00', status: 'Inactive' },
-];
-
-const sampleOrders: Order[] = [
-  { id: 'ORD-2574', customer: 'John Smith', item: 'Surprise Bag - Bakery', date: '15 Apr, 2025', pickupTime: '18:00-19:00', status: 'Completed', total: '$8.99' },
-  { id: 'ORD-2573', customer: 'Emily Johnson', item: 'Pastry Assortment Box', date: '15 Apr, 2025', pickupTime: '17:30-18:30', status: 'Ready', total: '$7.50' },
-  { id: 'ORD-2572', customer: 'Michael Brown', item: 'Sandwich Lunch Pack', date: '14 Apr, 2025', pickupTime: '16:00-17:00', status: 'Pending', total: '$5.99' },
-  { id: 'ORD-2571', customer: 'Sarah Wilson', item: 'Surprise Bag - Bakery', date: '14 Apr, 2025', pickupTime: '18:00-19:00', status: 'Completed', total: '$8.99' },
-  { id: 'ORD-2570', customer: 'Robert Taylor', item: 'Fresh Bread Basket', date: '13 Apr, 2025', pickupTime: '16:30-17:30', status: 'Cancelled', total: '$4.50' },
-];
-
 function MerchantDashboard() {
   const navigate = useNavigate();
+  
+  // Tab state
   const [activeTab, setActiveTab] = useState('dashboard');
+  
+  // Offer form states
   const [showNewOfferForm, setShowNewOfferForm] = useState(false);
   const [newOffer, setNewOffer] = useState<NewOfferForm>({
     title: '',
@@ -66,93 +25,234 @@ function MerchantDashboard() {
     originalPrice: '',
     discountedPrice: '',
     quantity: '',
-    expiryDate: '',
-    expiryTime: '',
+    is_active: true,
+    image: null,
+    pickup_time: '-' 
   });
-  const [offers, setOffers] = useState<Offer[]>(sampleOffers);
-  const [orders, setOrders] = useState<Order[]>(sampleOrders);
+  
+  // Data states
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  
+  // UI states
   const [isLoading, setIsLoading] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
+  // Load data when page loads
   useEffect(() => {
+    // Check if user is logged in
     const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
-    setIsLoggedIn(!!token);
-    setUserRole(role);
+    
+    if (!token) {
+      navigate('/login');
+      return;
+    }
 
-    // Simulate loading delay
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 800);
+    // Get data from API
+    getOffers();
+    getOrders();
   }, []);
 
+  // Auto-hide messages after 5 seconds
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => {
+        setMessage(null);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
+  // Get offers from API
+  const getOffers = async () => {
+    try {
+      const response = await api.get('/merchant/offers/getAll');
+      console.log('API Response:', response); // Log the full response
+      
+      if (response.data.success) {
+        let offersData = response.data.data;
+        
+        // Add more detailed logging
+        console.log('Raw offers data:', offersData);
+        
+        // Check if the data is not in the expected format
+        if (offersData && !Array.isArray(offersData)) {
+          if (offersData.offers && Array.isArray(offersData.offers)) {
+            offersData = offersData.offers; // Maybe it's nested
+          } else {
+            console.error('Unexpected data format:', offersData);
+            offersData = []; // Fallback to empty array
+          }
+        }
+        
+        // Normalize the data to match our expected format
+        const normalizedOffers = (offersData || []).map((offer: any) => ({
+          id: offer.id || Math.random().toString(36).substring(7), // Generate a random ID if none exists
+          title: offer.title || '',
+          originalPrice: offer.originalPrice || offer.original_price || 0,
+          discountedPrice: offer.discountedPrice || offer.discounted_price || 0,
+          quantity: offer.quantity || offer.quantity_available || 0,
+          expiresAt: offer.expiresAt || offer.expires_at || '',
+          status: offer.status || (offer.is_active ? 'Active' : 'Inactive'),
+        }));
+        
+        console.log('Normalized offers:', normalizedOffers);
+        setOffers(normalizedOffers);
+      } else {
+        showError('Could not load offers');
+      }
+    } catch (error) {
+      console.error('Error fetching offers:', error); // Log the error details
+      showError('Error loading offers');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Get orders from API
+  const getOrders = async () => {
+    try {
+      const response = await api.get('/merchant/orders');
+      if (response.data.success) {
+        setOrders(response.data.data);
+      } else {
+        showError('Could not load orders');
+      }
+    } catch (error) {
+      showError('Error loading orders');
+    }
+  };
+
+  // Show error message
+  const showError = (text: string) => {
+    setMessage({ type: 'error', text });
+  };
+
+  // Show success message
+  const showSuccess = (text: string) => {
+    setMessage({ type: 'success', text });
+  };
+
+  // Logout function
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
-    localStorage.removeItem('user');
-
-    setIsLoggedIn(false);
-    setUserRole(null);
-    setIsDropdownOpen(false);
-
     navigate('/login');
   };
 
-  // Statistics
-  const totalActiveOffers = offers.filter(offer => offer.status === 'Active').length;
-  const totalOrders = orders.length;
-  const completedOrders = orders.filter(order => order.status === 'Completed').length;
-  const totalRevenue = orders
-    .filter(order => order.status === 'Completed')
-    .reduce((sum, order) => sum + parseFloat(order.total.replace('$', '')), 0);
-  const foodSaved = completedOrders * 1.2; // assuming 1.2kg per order
-
-  const handleNewOfferSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  // Create new offer
+  const handleNewOfferSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsLoading(true);
 
-    // Create new offer with random ID and active status
-    const newOfferData: Offer = {
-      id: offers.length + 1,
-      title: newOffer.title,
-      originalPrice: parseFloat(newOffer.originalPrice),
-      discountedPrice: parseFloat(newOffer.discountedPrice),
-      quantity: parseInt(newOffer.quantity),
-      expiresAt: `${newOffer.expiryDate}T${newOffer.expiryTime}:00`,
-      status: 'Active'
-    };
+    try {
+      // Create form data for image upload
+      const formData = new FormData();
+      formData.append('title', newOffer.title);
+      formData.append('description', newOffer.description);
+      formData.append('original_price', newOffer.originalPrice);
+      formData.append('discounted_price', newOffer.discountedPrice);
+      formData.append('quantity_available', newOffer.quantity);
+      formData.append('is_active', newOffer.is_active ? '1' : '0');
+      formData.append('pickup_time', newOffer.pickup_time);
+      
+      if (newOffer.image) {
+        formData.append('image', newOffer.image);
+      }
 
-    // Add to offers list
-    setOffers([newOfferData, ...offers]);
+      // Send to API
+      const response = await api.post('/merchant/offers', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
 
-    // Reset form
-    setNewOffer({
-      title: '',
-      description: '',
-      originalPrice: '',
-      discountedPrice: '',
-      quantity: '',
-      expiryDate: '',
-      expiryTime: '',
-    });
-
-    // Hide form
-    setShowNewOfferForm(false);
+      if (response.data.success) {
+        // Get updated offers
+        getOffers();
+        showSuccess('Offer created successfully!');
+      } else {
+        showError('Failed to create offer');
+      }
+    } catch (error) {
+      showError('Error creating offer');
+    } finally {
+      // Reset form
+      setNewOffer({
+        title: '',
+        description: '',
+        originalPrice: '',
+        discountedPrice: '',
+        quantity: '',
+        is_active: true,
+        image: null,
+        pickup_time: '-'
+      });
+      setShowNewOfferForm(false);
+      setIsLoading(false);
+    }
   };
 
-  const handleChangeOfferStatus = (id: number, newStatus: 'Active' | 'Inactive' | 'Sold Out') => {
-    setOffers(offers.map(offer =>
-      offer.id === id ? { ...offer, status: newStatus } : offer
-    ));
+  // Change offer status (active/inactive/sold out)
+  const handleChangeOfferStatus = async (id: number, newStatus: 'Active' | 'Inactive' | 'Sold Out') => {
+    try {
+      const isActive = newStatus === 'Active' ? 1 : 0;
+      const isSoldOut = newStatus === 'Sold Out' ? 1 : 0;
+      
+      const response = await api.put(`/merchant/offers/${id}`, {
+        is_active: isActive,
+        is_sold_out: isSoldOut
+      });
+      
+      if (response.data.success) {
+        // Update the offer in the list
+        setOffers(offers.map(offer =>
+          offer.id === id ? { ...offer, status: newStatus } : offer
+        ));
+        
+        showSuccess('Offer updated successfully!');
+      } else {
+        showError('Failed to update offer');
+      }
+    } catch (error) {
+      showError('Error updating offer');
+    }
   };
 
-  const handleChangeOrderStatus = (id: string, newStatus: 'Pending' | 'Ready' | 'Completed' | 'Cancelled') => {
-    setOrders(orders.map(order =>
-      order.id === id ? { ...order, status: newStatus } : order
-    ));
+  // Change order status
+  const handleChangeOrderStatus = async (id: string, newStatus: 'Pending' | 'Ready' | 'Completed' | 'Cancelled') => {
+    try {
+      const response = await api.put(`/merchant/orders/${id}`, {
+        status: newStatus
+      });
+      
+      if (response.data.success) {
+        // Update the order in the list
+        setOrders(orders.map(order =>
+          order.id === id ? { ...order, status: newStatus } : order
+        ));
+        
+        showSuccess(`Order marked as ${newStatus}`);
+      } else {
+        showError('Failed to update order');
+      }
+    } catch (error) {
+      showError('Error updating order');
+    }
   };
 
+  // Calculate stats for dashboard
+  const stats = {
+    totalActiveOffers: offers.filter(offer => offer.status === 'Active').length,
+    totalOrders: orders.length,
+    completedOrders: orders.filter(order => order.status === 'Completed').length,
+    totalRevenue: orders
+      .filter(order => order.status === 'Completed')
+      .reduce((sum, order) => sum + parseFloat(order.total.replace('$', '')), 0),
+    foodSaved: orders.filter(order => order.status === 'Completed').length * 1.2
+  };
+
+  // Show loading spinner
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#F9F3F0]">
@@ -163,6 +263,28 @@ function MerchantDashboard() {
 
   return (
     <div className="min-h-screen bg-[#F9F3F0]">
+      {/* Show messages */}
+      {message && (
+        <div 
+          className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg max-w-md ${
+            message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium">{message.text}</p>
+            <button
+              onClick={() => setMessage(null)}
+              className="ml-4 text-gray-400 hover:text-gray-500"
+            >
+              <span className="sr-only">Close</span>
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <Header 
         isDropdownOpen={isDropdownOpen} 
@@ -173,15 +295,15 @@ function MerchantDashboard() {
       {/* Navigation Tabs */}
       <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {/* Main Content */}
+      {/* Content Area */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (
           <DashboardContent 
-            totalActiveOffers={totalActiveOffers}
-            totalOrders={totalOrders}
-            totalRevenue={totalRevenue}
-            foodSaved={foodSaved}
+            totalActiveOffers={stats.totalActiveOffers}
+            totalOrders={stats.totalOrders}
+            totalRevenue={stats.totalRevenue}
+            foodSaved={stats.foodSaved}
           />
         )}
 

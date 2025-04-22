@@ -1,26 +1,7 @@
 import React from 'react';
 import OfferForm from './OfferForm';
 import OffersList from './OffersList';
-
-interface Offer {
-  id: number;
-  title: string;
-  originalPrice: number;
-  discountedPrice: number;
-  quantity: number;
-  expiresAt: string;
-  status: 'Active' | 'Inactive' | 'Sold Out';
-}
-
-interface NewOfferForm {
-  title: string;
-  description: string;
-  originalPrice: string;
-  discountedPrice: string;
-  quantity: string;
-  expiryDate: string;
-  expiryTime: string;
-}
+import { Offer, NewOfferForm } from '../../../types/merchant';
 
 interface OffersContentProps {
   showNewOfferForm: boolean;
@@ -28,7 +9,7 @@ interface OffersContentProps {
   newOffer: NewOfferForm;
   setNewOffer: React.Dispatch<React.SetStateAction<NewOfferForm>>;
   handleNewOfferSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  offers: Offer[];
+  offers?: Offer[]; // Add optional type for offers
   handleChangeOfferStatus: (id: number, newStatus: 'Active' | 'Inactive' | 'Sold Out') => void;
 }
 
@@ -38,7 +19,7 @@ const OffersContent: React.FC<OffersContentProps> = ({
   newOffer, 
   setNewOffer,
   handleNewOfferSubmit,
-  offers,
+  offers = [], // Add default empty array
   handleChangeOfferStatus
 }) => {
   return (
@@ -66,11 +47,17 @@ const OffersContent: React.FC<OffersContentProps> = ({
         />
       )}
 
-      {/* Offers List */}
-      <OffersList 
-        offers={offers}
-        handleChangeOfferStatus={handleChangeOfferStatus}
-      />
+      {/* Shows a loading indicator if offers is undefined */}
+      {!offers ? (
+        <div className="flex justify-center py-12">
+          <div className="w-8 h-8 border-2 border-[#02615E] border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      ) : (
+        <OffersList 
+          offers={offers}
+          handleChangeOfferStatus={handleChangeOfferStatus}
+        />
+      )}
     </div>
   );
 };
