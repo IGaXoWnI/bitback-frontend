@@ -33,41 +33,44 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
   
   // Handle location data from the map
   const handleLocationData = async (lat: string, lng: string, radius: string) => {
-    // Set loading state
     setIsLoading(true);
     
-    // First close the modal to prevent it from reappearing
-    onClose();
-    navigate('/home');
-    
     try {
-      // Send location data to API
-      const response = await api.post('user/update-location', {
+      // Save location data to localStorage first (this is critical)
+      const locationData = {
         latitude: lat,
         longitude: lng,
-        zone: radius
-      });
+        searchRadius: radius
+      };
       
-      // If successful, update localStorage and navigate
-      if (response.data.success) {
-        // Update user data in localStorage
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        localStorage.setItem('user', JSON.stringify({
-          ...userData,
+      localStorage.setItem('userLocation', JSON.stringify(locationData));
+      
+      // Then try to update the server (but don't block on it)
+      try {
+        await api.post('user/update-location', {
           latitude: lat,
           longitude: lng,
-          searchRadius: radius
-        }));
-        
-        // Navigate to home page after successful update
-        navigate('/home');
-      } else {
-        console.error('API error:', response.data.message);
+          zone: radius
+        });
+      } catch (err) {
+        console.error('Error updating location on server:', err);
+        // Continue even if server update fails
       }
+      
+      // Update user data in localStorage
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      localStorage.setItem('user', JSON.stringify({
+        ...userData,
+        latitude: lat,
+        longitude: lng,
+        searchRadius: radius
+      }));
     } catch (err) {
-      console.error('Error updating location:', err);
+      console.error('Error saving location:', err);
     } finally {
       setIsLoading(false);
+      // Close the modal
+      onClose();
     }
   };
   

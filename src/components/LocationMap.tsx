@@ -94,7 +94,7 @@ const LocationMap: React.FC<LocationMapProps> = ({
     };
   }, []);
   
-  // Update handleFindFood to send location data
+  // Update handleFindFood function
   const handleFindFood = () => {
     if (!position) return;
     
@@ -106,10 +106,8 @@ const LocationMap: React.FC<LocationMapProps> = ({
       onLocationSet(
         position[0].toString(),
         position[1].toString(),
-        radiusKm // Use radius as zone
+        radiusKm
       );
-    } else {
-      navigate('/home');
     }
   };
 

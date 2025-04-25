@@ -113,12 +113,7 @@ const OffersList: React.FC<OffersListProps> = ({ offers = [], handleChangeOfferS
                           >
                             Deactivate
                           </button>
-                          <button 
-                            onClick={() => handleChangeOfferStatus(offer.id, 'Sold Out')}
-                            className="text-yellow-600 hover:text-yellow-900"
-                          >
-                            Mark Sold Out
-                          </button>
+                        
                         </>
                       ) : (
                         <button 

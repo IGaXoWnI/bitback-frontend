@@ -112,7 +112,7 @@ function PartnerSignupPage() {
         }
         
         alert('Registration successful!');
-        window.location.href = '/merchant/dashboard';
+        window.location.href = '/merchant';
       } else {
         alert(data.message || 'Registration failed');
       }

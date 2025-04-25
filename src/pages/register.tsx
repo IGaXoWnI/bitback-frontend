@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; // Add useNavigate
 import api from "../api.tsx";
 
 function Register() {
+  const navigate = useNavigate(); // Add this
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,8 +15,20 @@ function Register() {
     setError("");
 
     try {
-      const response = await api.post("/register", { name, email, password ,role });
-      window.location.href = "/login";
+      const response = await api.post("/register", { name, email, password, role });
+      const token = response.data.token;
+      
+      // Save token and user data
+      localStorage.setItem("token", token);
+      localStorage.setItem("role", role);
+      
+      // This is the key change - use navigate with state to trigger the location modal
+      navigate("/home", { 
+        state: { 
+          fromRegistration: true,
+          requireLocation: true 
+        } 
+      });
     } catch (err) {
       setError("An error occurred during registration. Please try again.");
     }
