@@ -25,16 +25,23 @@ const Navbar: React.FC = () => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
-    localStorage.removeItem('user');
+    // Clear all auth tokens
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
     
-    setIsLoggedIn(false);
-    setUserRole(null);
+    // Clear location data
+    localStorage.removeItem("userLocation");
+    localStorage.removeItem("searchRadius");
     
+    // Clear user data
+    localStorage.removeItem("user");
+
+    
+    // Close user menu
     setIsDropdownOpen(false);
     
-    navigate('/');
+    // Redirect to login page
+    navigate("/login");
   };
 
   const toggleDropdown = () => {
@@ -109,7 +116,7 @@ const Navbar: React.FC = () => {
                 {isDropdownOpen && (
                   <div 
                     id="userDropdown" 
-                    className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200"
+                    className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
                   >
                     <Link 
                       to="/profile" 
@@ -124,6 +131,19 @@ const Navbar: React.FC = () => {
                       onClick={() => setIsDropdownOpen(false)}
                     >
                       Settings
+                    </Link>
+                    {/* Reservations Link */}
+                    <Link
+                      to="/reservations"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                      onClick={() => setIsDropdownOpen(false)}
+                    >
+                      <div className="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-[#02615E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        My Reservations
+                      </div>
                     </Link>
                     <div className="border-t border-gray-100 my-1"></div>
                     <button 

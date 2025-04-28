@@ -16,20 +16,28 @@ function Register() {
 
     try {
       const response = await api.post("/register", { name, email, password, role });
-      const token = response.data.token;
+      
+      // Update this line to match the login pattern
+      // Check both possible token locations
+      const token = response.data.autorisations?.token || response.data.token;
       
       // Save token and user data
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
       
-      // This is the key change - use navigate with state to trigger the location modal
+      // Also save user data like in login
+      if (response.data.user) {
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+      }
+      
+      // Navigate with registration flag
       navigate("/home", { 
         state: { 
-          fromRegistration: true,
-          requireLocation: true 
+          fromRegistration: true
         } 
       });
     } catch (err) {
+      console.error("Registration error:", err);
       setError("An error occurred during registration. Please try again.");
     }
   };

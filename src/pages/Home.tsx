@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import FoodItemCard from '../components/box_card';
 import FilterSidebar from '../components/filterSideBar';
-import LocationModal from '../components/LocationModal';
 import Navbar from '../components/Navbar'; 
+import LocationModal from '../components/LocationModal';
+import SkeletonLoader from '../components/SkeletonLoader';
 import api from '../api';
 
 // Define a TypeScript interface for the food item data structure
@@ -22,7 +23,14 @@ interface FoodItem {
   created_at?: string;
   updated_at?: string;
   business_id?: number;
+  distance_in_meters?: number;
   [key: string]: any; // Add an index signature to allow any other properties
+}
+
+// Add this interface near your other interfaces at the top of the file
+interface NearMeResponseItem {
+  box: FoodItem;
+  distance_in_meters: number;
 }
 
 function HomePage() {
@@ -33,6 +41,7 @@ function HomePage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]); // Typed array
+  const [isLoadingFoodItems, setIsLoadingFoodItems] = useState(true);
   const [filters, setFilters] = useState({
     sortBy: 'default',
     offers: false,
@@ -41,14 +50,15 @@ function HomePage() {
     maxDeliveryFee: 5,
     dietaryOptions: [],
   });
+  const [locationUpdated, setLocationUpdated] = useState(0); // Track location changes
 
   // Check if we should show the location modal
   useEffect(() => {
     const timer = setTimeout(() => {
       const locationSet = localStorage.getItem('userLocation');
-      const fromLogin = location.state?.fromLogin;
+      const fromRegistration = location.state?.fromRegistration;
 
-      if ((fromLogin && !locationSet) || !locationSet) {
+      if (fromRegistration || !locationSet) {
         setShowLocationModal(true);
       }
 
@@ -58,33 +68,56 @@ function HomePage() {
     return () => clearTimeout(timer);
   }, [location]);
 
-  // Fetch food items when component mounts
+  // Fetch food items when component mounts or location is updated
   useEffect(() => {
     // Get food items from API
     const getFoodItems = async () => {
+      setIsLoadingFoodItems(true);
+      
       try {
-        const response = await api.get('/boxes');
+        console.log("Fetching near-me data...");
+        const response = await api.get('/near-me');
+        console.log("Near-me response:", response.data);
         
-        // Handle the nested structure - data is in response.data.data.data
-        if (response.data.success && response.data.data) {
-          // Check what kind of data we received
+        // Check if we have a valid response
+        if (response?.data?.success && response?.data?.data) {
+          
+          // The data format is an array of objects with a "box" property
           if (Array.isArray(response.data.data)) {
-            setFoodItems(response.data.data);
-          } else if (response.data.data.data && Array.isArray(response.data.data.data)) {
-            setFoodItems(response.data.data.data);
+            // Extract boxes from the data array
+            const boxesData = response.data.data.map((item: NearMeResponseItem) => {
+              if (!item || !item.box) {
+                console.log("Invalid item in data array:", item);
+                return null;
+              }
+              
+              return {
+                ...item.box,
+                distance_in_meters: item.distance_in_meters
+              };
+            }).filter(Boolean); // Remove any null items
+            
+            console.log("Processing boxes:", boxesData.length, "items");
+            setFoodItems(boxesData);
           } else {
+            console.log("Unexpected data format:", response.data.data);
             setFoodItems([]);
           }
         } else {
+          console.log("No success or data in response, setting empty array");
           setFoodItems([]);
         }
       } catch (error) {
+        console.error("Error fetching near-me data:", error);
         setFoodItems([]);
+      } finally {
+        // Always set loading to false when done
+        setIsLoadingFoodItems(false);
       }
     };
 
     getFoodItems();
-  }, []);
+  }, [locationUpdated]); // This will re-run when location is updated
 
   // Fallback data in case API fails completely
   useEffect(() => {
@@ -201,7 +234,13 @@ function HomePage() {
 
               {/* Food items grid */}
               <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {!foodItems || !Array.isArray(foodItems) || foodItems.length === 0 ? (
+                {isLoadingFoodItems ? (
+                  // Show skeleton loaders while loading
+                  Array(6).fill(0).map((_, index) => (
+                    <SkeletonLoader key={index} />
+                  ))
+                ) : !foodItems || !Array.isArray(foodItems) || foodItems.length === 0 ? (
+                  // Show the empty state if no items found
                   <div className="col-span-3 flex flex-col items-center justify-center py-16 bg-white rounded-lg shadow text-center">
                     <img 
                       src="https://cdn.iconscout.com/icon/free/png-256/free-empty-box-4085075-3378186.png" 
@@ -214,6 +253,7 @@ function HomePage() {
                     </p>
                   </div>
                 ) : (
+                  // Show actual food items when loaded
                   foodItems.map((item) => {
                     try {
                       return (
@@ -233,7 +273,9 @@ function HomePage() {
                             rating={Number(item.rating) || 0}
                             restaurant={item.business?.business_name || item.title || ''}
                             pickupTime={item.pickup_time || ''}
-                            distance={'Nearby'}
+                            distance={item.distance_in_meters 
+                              ? `${(item.distance_in_meters / 1000).toFixed(1)} km away` 
+                              : 'Nearby'}
                             isFavorite={false}
                             onFavoriteToggle={() => {}}
                           />
@@ -251,7 +293,16 @@ function HomePage() {
           {/* Location Modal - this should be inside the isPageLoaded check */}
           <LocationModal 
             isOpen={showLocationModal} 
-            onClose={() => setShowLocationModal(false)} 
+            onClose={() => {
+              setShowLocationModal(false);
+              // Trigger a refresh of the food items
+              setLocationUpdated(prev => prev + 1);
+              
+              // Clear registration state
+              if (location.state?.fromRegistration) {
+                navigate(".", { replace: true, state: {} });
+              }
+            }} 
           />
         </>
       ) : (

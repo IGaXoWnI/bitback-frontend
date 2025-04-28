@@ -5,10 +5,10 @@ import LoginPage from "./pages/login";
 import WelcomePage from "./pages/welcomePage";
 import HomePage from "./pages/Home";
 import DetailPage from "./pages/detailPage";
-import LocationMap from "./components/LocationMap";
 import PartnerSignupPage from "./pages/partnerSignupPage";
 import MerchantDashboard from "./pages/MerchantDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import MyReservations from "./pages/MyReservations";
 
 
 const AppRoutes: React.FC = () => {
@@ -19,10 +19,11 @@ const AppRoutes: React.FC = () => {
       <Route path="/register" element={<RegisterPage />} /> {/* Register route */}
       <Route path="/home" element={<HomePage />} /> {/* Home route */}
       <Route path="/item/:id" element={<DetailPage />} />
-      <Route path="/map" element={<LocationMap />} />
+
       <Route path="/partner-signup" element={<PartnerSignupPage />} /> {/* Fallback route */}
       <Route path="/merchant" element={<MerchantDashboard />} /> {/* Fallback route */}
       <Route path="/admin" element={<AdminDashboard />} /> {/* Fallback route */}
+      <Route path="/reservations" element={<MyReservations />} />
     </Routes>
   );
 };

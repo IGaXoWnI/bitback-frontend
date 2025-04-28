@@ -1,28 +1,19 @@
-import axios from "axios";
-
-const API_BASE_URL = "http://127.0.0.1:8000/api"; 
+import axios from 'axios';
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json'
-  }
+  baseURL: 'http://127.0.0.1:8000/api'
 });
 
-// Add this interceptor to automatically include the auth token in all requests
+// Request interceptor to add auth token to all requests
 api.interceptors.request.use(
-  config => {
+  (config) => {
     const token = localStorage.getItem('token');
-    
     if (token) {
-      // Add Authorization header with the token
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
     return config;
   },
-  error => {
+  (error) => {
     return Promise.reject(error);
   }
 );

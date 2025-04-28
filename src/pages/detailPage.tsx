@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import api from '../api';
+import { toast } from 'react-toastify';
+import SuccessModal from '../components/modals/SuccessModal';
+import ErrorModal from '../components/modals/ErrorModal';
+import ReportModal from '../components/modals/ReportModal';
 
 interface FoodItemDetail {
   id: number;
@@ -37,6 +41,15 @@ function DetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [favorite, setFavorite] = useState(false);
   const [reserving, setReserving] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportDescription, setReportDescription] = useState('');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const reportModalRef = useRef<HTMLDivElement>(null);
+
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorDetails, setErrorDetails] = useState('');
 
   useEffect(() => {
     async function fetchData() {
@@ -59,13 +72,117 @@ function DetailPage() {
     fetchData();
   }, [id]);
 
-  const handleReserveClick = () => {
+  const handleReserveClick = async () => {
+    if (!id) return;
+    
     setReserving(true);
-    setTimeout(() => {
+    
+    try {
+      const response = await api.post('/makeReservation', {
+        box_id: id
+      });
+      
+      if (response.data.success) {
+        setItem(prevItem => {
+          if (!prevItem) return null;
+          
+          return {
+            ...prevItem,
+            quantity: {
+              available: prevItem.quantity.available - 1,
+              reserved: prevItem.quantity.reserved + 1
+            }
+          };
+        });
+        
+        setShowSuccessModal(true);
+      } else {
+        setErrorDetails(response.data.message || 'Failed to reserve box');
+        setShowErrorModal(true);
+      }
+    } catch (error : any) {
+      console.error('Reservation error:', error);
+      
+      if (error.response) {
+        const errorMessage = error.response.data.message || 'An error occurred';
+        
+        if (errorMessage.includes('already have a reservation')) {
+          setErrorDetails('You already have a reservation for this box');
+          setShowErrorModal(true);
+        } else if (errorMessage.includes('All boxes of this type have been reserved')) {
+          setErrorDetails('This box is no longer available');
+          setShowErrorModal(true);
+          
+          setItem(prevItem => {
+            if (!prevItem) return null;
+            return {
+              ...prevItem,
+              quantity: {
+                available: 0,
+                reserved: prevItem.quantity.available + prevItem.quantity.reserved
+              }
+            };
+          });
+        } else if (error.response.status === 401) {
+          setErrorDetails('Please log in to reserve a box');
+          setShowErrorModal(true);
+        } else {
+          setErrorDetails(errorMessage);
+          setShowErrorModal(true);
+        }
+      } else {
+        setErrorDetails('Network error. Please check your connection.');
+        setShowErrorModal(true);
+      }
+    } finally {
       setReserving(false);
-      alert("Item reserved successfully!");
-    }, 1500);
+    }
   };
+
+  const handleReportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!reportReason) {
+      toast.error("Please select a reason for reporting");
+      return;
+    }
+    
+    setIsSubmittingReport(true);
+    
+    try {
+      await api.post('/reports', {
+        box_id: id,
+        reason: reportReason,
+        description: reportDescription
+      });
+      
+      toast.success("Thank you for your report. We'll review it shortly.");
+      setShowReportModal(false);
+      setReportReason('');
+      setReportDescription('');
+    } catch (error) {
+      toast.error("Failed to submit report. Please try again.");
+      console.error("Report submission error:", error);
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (reportModalRef.current && !reportModalRef.current.contains(event.target as Node)) {
+        setShowReportModal(false);
+      }
+    };
+
+    if (showReportModal) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showReportModal]);
 
   const percentageReserved = item ? Math.min(100, Math.round((item.quantity.reserved / (item.quantity.available + item.quantity.reserved)) * 100)) : 0;
 
@@ -137,7 +254,7 @@ function DetailPage() {
                 </svg>
               )}
             </button>
-            
+
             {item.price.discount_percentage > 0 && (
               <div className="absolute top-4 left-4 z-20 bg-[#02615E] text-white px-4 py-2 rounded-full font-semibold text-sm shadow-lg">
                 {item.price.discount_percentage}% OFF
@@ -186,9 +303,7 @@ function DetailPage() {
             </div>
           </div>
           
-          {/* ROW 2, COLUMN 1: PICKUP TIME SECTION - VERTICALLY CENTERED */}
           <div className="bg-[#F9F3F0] p-8 flex flex-col justify-center">
-            {/* Pickup time */}
             <div className="flex items-start mb-6">
               <div className="mr-3 mt-1">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#02615E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -201,7 +316,6 @@ function DetailPage() {
               </div>
             </div>
             
-            {/* Address */}
             {item.business && (
               <div className="flex items-start">
                 <div className="mr-3 mt-1">
@@ -271,6 +385,16 @@ function DetailPage() {
               >
                 Back to Explore
               </button>
+
+              <button 
+                onClick={() => setShowReportModal(true)}
+                className="mt-3 py-3 rounded-xl border-2 border-red-200 text-red-600 font-medium hover:bg-red-50 flex items-center justify-center transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Report an Issue
+              </button>
             </div>
           </div>
         </div>
@@ -331,8 +455,34 @@ function DetailPage() {
           </div>
         )}
       </div>
+
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        boxId={id}
+        reportReason={reportReason}
+        setReportReason={setReportReason}
+        reportDescription={reportDescription}
+        setReportDescription={setReportDescription}
+        onSubmit={handleReportSubmit}
+        isSubmitting={isSubmittingReport}
+      />
+
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        businessName={item?.business?.name}
+        pickupTime={item?.pickup_time}
+        address={item?.business?.address}
+      />
+
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        errorMessage={errorDetails}
+      />
     </div>
   );
 }
 
-export default DetailPage; 
+export default DetailPage;

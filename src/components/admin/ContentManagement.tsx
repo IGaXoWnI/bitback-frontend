@@ -1,90 +1,147 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+
+// Interface for the offer data structure based on actual API response
+interface Offer {
+  id: number;
+  title: string;
+  description: string;
+  original_price: number | string;
+  discounted_price: number | string; // This is the actual field name in API
+  image: string; // This is the actual field name in API
+  quantity_available: number | string; // This is the actual field name in API
+  quantity_reserved: number | string;
+  pickup_time: string;
+  rating: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  business_id: number;
+  business?: {
+    id: number;
+    user_id: number;
+    business_name: string;
+    business_type: string;
+    business_address: string;
+    city: string;
+  };
+}
 
 function ContentManagement() {
-  const [contents, setContents] = useState([
-    { 
-      id: 1, 
-      title: 'Homepage Hero Banner', 
-      type: 'Banner',
-      status: 'Active', 
-      lastUpdated: '2025-04-15',
-      author: 'Marketing Team'
-    },
-    { 
-      id: 2, 
-      title: 'Earth Day Campaign', 
-      type: 'Promotion',
-      status: 'Scheduled', 
-      lastUpdated: '2025-04-10',
-      author: 'Content Team'
-    },
-    { 
-      id: 3, 
-      title: 'How BitBack Works', 
-      type: 'Info Page',
-      status: 'Active', 
-      lastUpdated: '2025-03-22',
-      author: 'Content Team'
-    },
-    { 
-      id: 4, 
-      title: 'Terms of Service', 
-      type: 'Legal',
-      status: 'Active', 
-      lastUpdated: '2025-02-18',
-      author: 'Legal Team'
-    },
-    { 
-      id: 5, 
-      title: 'Environmental Impact FAQ', 
-      type: 'Info Page',
-      status: 'Draft', 
-      lastUpdated: '2025-04-12',
-      author: 'Marketing Team'
-    },
-    { 
-      id: 6, 
-      title: 'Merchant Onboarding Guide', 
-      type: 'Guide',
-      status: 'Active', 
-      lastUpdated: '2025-03-05',
-      author: 'Merchant Support'
-    },
-  ]);
-  
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [offerToDelete, setOfferToDelete] = useState<Offer | null>(null);
 
-  // Filter contents based on active tab and search
-  const filteredContents = contents.filter(content => {
+  useEffect(() => {
+    fetchOffers();
+  }, []);
+
+  const fetchOffers = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.get('http://127.0.0.1:8000/api/getAllBoxes', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // Debug the response structure
+      console.log('API Response:', response.data);
+      
+      if (response.data.success) {
+        // Access the paginated data properly
+        if (response.data.data && Array.isArray(response.data.data.data)) {
+          setOffers(response.data.data.data);
+        } else {
+          setOffers([]);
+          setError('Received invalid data format from server');
+        }
+        setError('');
+      } else {
+        setOffers([]);
+        setError('Failed to fetch offers');
+      }
+    } catch (err) {
+      console.error('Error fetching offers:', err);
+      setOffers([]);
+      setError('Authentication error. Please login again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteOffer = async (id: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.delete(`http://127.0.0.1:8000/api/boxes/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.data && response.data.success) {
+        setOffers(offers.filter(offer => offer.id !== id));
+        toast.success('Offer deleted successfully');
+      } else {
+        toast.error('Failed to delete offer');
+      }
+    } catch (err) {
+      toast.error('Error deleting offer');
+    } finally {
+      setShowDeleteModal(false);
+      setOfferToDelete(null);
+    }
+  };
+
+  const handleDeleteClick = (offer: Offer) => {
+    setOfferToDelete(offer);
+    setShowDeleteModal(true);
+  };
+
+  // Filter offers based on active tab and search
+  const filteredOffers = Array.isArray(offers) ? offers.filter(offer => {
     const matchesTab = activeTab === 'all' || 
-                       (activeTab === 'active' && content.status === 'Active') ||
-                       (activeTab === 'draft' && content.status === 'Draft') ||
-                       (activeTab === 'scheduled' && content.status === 'Scheduled');
+                       (activeTab === 'active' && offer.is_active) ||
+                       (activeTab === 'expired' && !offer.is_active);
     
     const matchesSearch = 
-      content.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      content.type.toLowerCase().includes(searchTerm.toLowerCase());
+      offer.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      offer.business?.business_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      offer.description?.toLowerCase().includes(searchTerm.toLowerCase());
     
     return matchesTab && matchesSearch;
-  });
+  }) : [];
 
   return (
     <div>
       <div className="sm:flex sm:items-center sm:justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Content Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Merchant Offers</h1>
           <p className="mt-2 text-sm text-gray-600">
-            Manage website content, banners, and promotional materials
+            Manage all merchant offers/boxes on the platform
           </p>
         </div>
-        <button
-          type="button"
-          className="mt-4 sm:mt-0 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#02615E] hover:bg-[#02615E]/90"
-        >
-          Add New Content
-        </button>
       </div>
+
+      {error && (
+        <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 text-red-700">
+          <p>{error}</p>
+          <button 
+            onClick={() => fetchOffers()} 
+            className="mt-2 text-sm font-medium text-red-700 underline"
+          >
+            Try again
+          </button>
+        </div>
+      )}
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="border-b border-gray-200">
@@ -97,7 +154,7 @@ function ContentManagement() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              All Content
+              All Offers
             </button>
             <button
               onClick={() => setActiveTab('active')}
@@ -110,24 +167,14 @@ function ContentManagement() {
               Active
             </button>
             <button
-              onClick={() => setActiveTab('draft')}
+              onClick={() => setActiveTab('expired')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'draft'
+                activeTab === 'expired'
                   ? 'border-[#02615E] text-[#02615E]'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Drafts
-            </button>
-            <button
-              onClick={() => setActiveTab('scheduled')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'scheduled'
-                  ? 'border-[#02615E] text-[#02615E]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Scheduled
+              Expired
             </button>
           </nav>
         </div>
@@ -143,7 +190,7 @@ function ContentManagement() {
               id="search"
               name="search"
               className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-[#02615E] focus:border-[#02615E] sm:text-sm"
-              placeholder="Search content"
+              placeholder="Search offers by title, merchant or description"
               type="search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -151,130 +198,171 @@ function ContentManagement() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Title
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Last Updated
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Author
-                </th>
-                <th scope="col" className="relative px-6 py-3">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredContents.map((content) => (
-                <tr key={content.id}>
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-[#02615E]">{content.title}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{content.type}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                      ${content.status === 'Active' ? 'bg-green-100 text-green-800' : ''}
-                      ${content.status === 'Draft' ? 'bg-gray-100 text-gray-800' : ''}
-                      ${content.status === 'Scheduled' ? 'bg-blue-100 text-blue-800' : ''}
-                    `}>
-                      {content.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {content.lastUpdated}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {content.author}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button className="text-[#02615E] hover:text-[#02615E]/80 mr-3">
-                      Edit
-                    </button>
-                    <button className="text-red-600 hover:text-red-800">
-                      Delete
-                    </button>
-                  </td>
-                </tr>
+        {/* Grid view of offers */}
+        <div className="p-6">
+          {loading ? (
+            <div className="flex justify-center items-center p-8">
+              <div className="w-12 h-12 border-4 border-[#02615E]/20 border-t-[#02615E] rounded-full animate-spin"></div>
+            </div>
+          ) : filteredOffers.length === 0 ? (
+            <div className="py-12 text-center">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No offers found</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                No offers match your current filters.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredOffers.map((offer) => (
+                <div 
+                  key={offer.id} 
+                  className="border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col h-full"
+                >
+                  {/* Offer image */}
+                  <div className="h-40 bg-gray-200 relative">
+                    {offer.image ? (
+                      <img 
+                        src={offer.image} 
+                        alt={offer.title} 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full bg-gray-200 text-gray-400">
+                        <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    )}
+                    
+                    {/* Status badge */}
+                    <div className="absolute top-2 right-2">
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full 
+                        ${offer.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
+                      `}>
+                        {offer.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Offer details */}
+                  <div className="p-4 flex-1 flex flex-col">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold mb-1">{offer.title}</h3>
+                      <p className="text-sm text-gray-500 mb-2">
+                        By {offer.business?.business_name || 'Unknown'}
+                      </p>
+                      <p className="text-sm mb-4 text-gray-700 line-clamp-2">{offer.description}</p>
+                      
+                      <div className="flex justify-between mb-2">
+                        <div className="text-sm">
+                          <span className="font-medium">Original:</span>
+                          <span className="ml-1 line-through">
+                            ${typeof offer.original_price === 'number' 
+                              ? offer.original_price.toFixed(2) 
+                              : parseFloat(offer.original_price || '0').toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="text-sm font-bold text-[#02615E]">
+                          ${typeof offer.discounted_price === 'number'
+                            ? offer.discounted_price.toFixed(2)
+                            : parseFloat(offer.discounted_price || '0').toFixed(2)}
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-between mb-2">
+                        <div className="text-sm">
+                          <span className="font-medium">Available:</span>
+                          <span className="ml-1">
+                            {typeof offer.quantity_available === 'number' 
+                              ? offer.quantity_available 
+                              : parseInt(offer.quantity_available || '0')}
+                          </span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="font-medium">Pickup:</span>
+                          <span className="ml-1">{offer.pickup_time}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="text-xs text-gray-500 mb-3">
+                        Created: {new Date(offer.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-end mt-auto pt-3 border-t border-gray-200">
+                      <button 
+                        onClick={() => handleDeleteClick(offer)}
+                        className="inline-flex items-center text-sm font-medium text-red-600 hover:text-red-800"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
-        
-        {filteredContents.length === 0 && (
-          <div className="py-12 text-center">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No content found</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Get started by creating a new content item.
-            </p>
-            <div className="mt-6">
-              <button
-                type="button"
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#02615E] hover:bg-[#02615E]/90"
-              >
-                <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                </svg>
-                Add Content
-              </button>
             </div>
-          </div>
-        )}
-        
-        <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 flex justify-between sm:hidden">
-              <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                Previous
-              </button>
-              <button className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                Next
-              </button>
-            </div>
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-gray-700">
-                  Showing <span className="font-medium">1</span> to <span className="font-medium">{filteredContents.length}</span> of <span className="font-medium">{filteredContents.length}</span> items
-                </p>
-              </div>
-              <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                  <button className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                    <span className="sr-only">Previous</span>
-                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                  <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-[#02615E]">
-                    1
-                  </button>
-                  <button className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                    <span className="sr-only">Next</span>
-                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </nav>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && offerToDelete && (
+        <div className="fixed inset-0 z-10 overflow-y-auto">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900">Delete Offer</h3>
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500">
+                        Are you sure you want to delete the offer "{offerToDelete.title}" from {offerToDelete.business?.business_name || 'Unknown'}? This action cannot be undone.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={() => deleteOffer(offerToDelete.id)}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setOfferToDelete(null);
+                  }}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#02615E] sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

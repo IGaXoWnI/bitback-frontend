@@ -1,78 +1,131 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Business {
+  id: number;
+  user_id: number;
+  business_name: string;
+  business_type: string;
+  business_address: string;
+  city: string;
+  postal_code: string;
+  created_at: string;
+  updated_at: string;
+  user: User;
+}
+
+interface PaginationData {
+  current_page: number;
+  last_page: number;
+  total: number;
+  from: number;
+  to: number;
+}
 
 function MerchantsManagement() {
-  const [merchants, setMerchants] = useState([
-    { 
-      id: 1, 
-      name: 'Artisan Bakery', 
-      owner: 'John Smith',
-      email: 'contact@artisanbakery.com', 
-      type: 'Restaurant', 
-      status: 'Approved', 
-      joined: '2023-07-10',
-      salesAmount: 3450,
-      itemsSold: 152
-    },
-    { 
-      id: 2, 
-      name: 'Fresh Market', 
-      owner: 'Sarah Johnson',
-      email: 'info@freshmarket.com', 
-      type: 'Grocery', 
-      status: 'Approved', 
-      joined: '2023-08-22',
-      salesAmount: 5680,
-      itemsSold: 230
-    },
-    { 
-      id: 3, 
-      name: 'Organic Delights', 
-      owner: 'David Lee',
-      email: 'hello@organicdelights.com', 
-      type: 'Restaurant', 
-      status: 'Pending', 
-      joined: '2023-11-05',
-      salesAmount: 0,
-      itemsSold: 0
-    },
-    { 
-      id: 4, 
-      name: 'City Cafe', 
-      owner: 'Maria Garcia',
-      email: 'contact@citycafe.com', 
-      type: 'Cafe', 
-      status: 'Approved', 
-      joined: '2023-09-15',
-      salesAmount: 2890,
-      itemsSold: 178
-    },
-    { 
-      id: 5, 
-      name: 'Green Grocer', 
-      owner: 'Robert Wilson',
-      email: 'info@greengrocer.com', 
-      type: 'Grocery', 
-      status: 'Suspended', 
-      joined: '2023-06-30',
-      salesAmount: 1250,
-      itemsSold: 64
-    },
-  ]);
+  const [merchants, setMerchants] = useState<Business[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [pagination, setPagination] = useState<PaginationData>({
+    current_page: 1,
+    last_page: 1,
+    total: 0,
+    from: 0,
+    to: 0
+  });
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
-  
-  // Filter merchants based on search term, type, and status
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [merchantToDelete, setMerchantToDelete] = useState<Business | null>(null);
+
+  const fetchMerchants = async (page = 1) => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.get(`http://127.0.0.1:8000/api/businesses?page=${page}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.data.success) {
+        setMerchants(response.data.data.data);
+        setPagination({
+          current_page: response.data.data.current_page,
+          last_page: response.data.data.last_page,
+          total: response.data.data.total,
+          from: response.data.data.from,
+          to: response.data.data.to
+        });
+        setError('');
+      } else {
+        setError('Failed to fetch merchants');
+      }
+    } catch (err) {
+      setError('Authentication error. Please login again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteMerchant = async (id: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.delete(`http://127.0.0.1:8000/api/businesses/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.data && response.data.success) {
+        setMerchants(merchants.filter(merchant => merchant.id !== id));
+        toast.success('Merchant deleted successfully');
+      } else {
+        toast.error('Failed to delete merchant');
+      }
+    } catch (err) {
+      toast.error('Authentication error. Please login again.');
+    } finally {
+      setShowDeleteModal(false);
+      setMerchantToDelete(null);
+    }
+  };
+
+  const handleDeleteClick = (merchant: Business) => {
+    setMerchantToDelete(merchant);
+    setShowDeleteModal(true);
+  };
+
+  useEffect(() => {
+    fetchMerchants();
+  }, []);
+
+  const changePage = (page: number) => {
+    fetchMerchants(page);
+  };
+
   const filteredMerchants = merchants.filter(merchant => {
-    const matchesSearch = 
-      merchant.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      merchant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      merchant.owner.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = selectedType === 'all' || merchant.type === selectedType;
-    const matchesStatus = selectedStatus === 'all' || merchant.status === selectedStatus;
+    const matchesSearch = searchTerm === '' || 
+      merchant.business_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      merchant.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      merchant.user.email.toLowerCase().includes(searchTerm.toLowerCase());
     
-    return matchesSearch && matchesType && matchesStatus;
+    const matchesType = selectedType === 'all' || merchant.business_type === selectedType;
+    
+    return matchesSearch && matchesType;
   });
 
   return (
@@ -91,6 +144,18 @@ function MerchantsManagement() {
           Add New Merchant
         </button>
       </div>
+
+      {error && (
+        <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 text-red-700">
+          <p>{error}</p>
+          <button 
+            onClick={() => fetchMerchants()} 
+            className="mt-2 text-sm font-medium text-red-700 underline"
+          >
+            Try again
+          </button>
+        </div>
+      )}
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="p-4 border-b border-gray-200 bg-gray-50">
@@ -128,144 +193,209 @@ function MerchantsManagement() {
                   <option value="all">All Types</option>
                   <option value="Restaurant">Restaurant</option>
                   <option value="Cafe">Cafe</option>
-                  <option value="Grocery">Grocery</option>
+                  <option value="Supermarket">Supermarket</option>
                   <option value="Bakery">Bakery</option>
-                </select>
-              </div>
-              <div className="w-full sm:w-auto">
-                <select
-                  id="status"
-                  name="status"
-                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#02615E] focus:border-[#02615E] sm:text-sm rounded-md"
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="Approved">Approved</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Suspended">Suspended</option>
                 </select>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Merchant
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Owner/Contact
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Sales
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Joined
-                </th>
-                <th scope="col" className="relative px-6 py-3">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredMerchants.map((merchant) => (
-                <tr key={merchant.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 rounded-full bg-[#02615E]/10 flex items-center justify-center text-[#02615E] font-medium">
-                        {merchant.name.charAt(0)}
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{merchant.name}</div>
-                        <div className="text-sm text-gray-500">{merchant.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{merchant.owner}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{merchant.type}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                      ${merchant.status === 'Approved' ? 'bg-green-100 text-green-800' : ''}
-                      ${merchant.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : ''}
-                      ${merchant.status === 'Suspended' ? 'bg-red-100 text-red-800' : ''}
-                    `}>
-                      {merchant.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">${merchant.salesAmount.toFixed(2)}</div>
-                    <div className="text-xs text-gray-500">{merchant.itemsSold} items</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {merchant.joined}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button className="text-[#02615E] hover:text-[#02615E]/80 mr-3">
-                      Edit
-                    </button>
-                    <button className="text-red-600 hover:text-red-800">
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        
-        <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 flex justify-between sm:hidden">
-              <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                Previous
-              </button>
-              <button className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                Next
-              </button>
+        {loading ? (
+          <div className="flex justify-center items-center p-8">
+            <div className="w-12 h-12 border-4 border-[#02615E]/20 border-t-[#02615E] rounded-full animate-spin"></div>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Merchant
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Owner/Contact
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Location
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Joined
+                    </th>
+                    <th scope="col" className="relative px-6 py-3">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredMerchants.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500">
+                        No merchants found
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredMerchants.map((merchant) => (
+                      <tr key={merchant.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-[#02615E]/10 flex items-center justify-center text-[#02615E] font-medium">
+                              {merchant.business_name.charAt(0)}
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">{merchant.business_name}</div>
+                              <div className="text-sm text-gray-500">{merchant.user.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{merchant.user.name}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{merchant.business_type}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{merchant.city}</div>
+                          <div className="text-xs text-gray-500">{merchant.postal_code}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(merchant.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button 
+                            className="text-red-600 hover:text-red-800"
+                            onClick={() => handleDeleteClick(merchant)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-gray-700">
-                  Showing <span className="font-medium">1</span> to <span className="font-medium">5</span> of <span className="font-medium">5</span> merchants
-                </p>
+            
+            <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 flex justify-between sm:hidden">
+                  <button 
+                    className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ${pagination.current_page === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => pagination.current_page > 1 && changePage(pagination.current_page - 1)}
+                    disabled={pagination.current_page === 1}
+                  >
+                    Previous
+                  </button>
+                  <button 
+                    className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ${pagination.current_page === pagination.last_page ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => pagination.current_page < pagination.last_page && changePage(pagination.current_page + 1)}
+                    disabled={pagination.current_page === pagination.last_page}
+                  >
+                    Next
+                  </button>
+                </div>
+                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm text-gray-700">
+                      Showing <span className="font-medium">{pagination.from || 0}</span> to <span className="font-medium">{pagination.to || 0}</span> of <span className="font-medium">{pagination.total}</span> merchants
+                    </p>
+                  </div>
+                  {pagination.last_page > 1 && (
+                    <div>
+                      <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        <button 
+                          className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${pagination.current_page === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'}`}
+                          onClick={() => pagination.current_page > 1 && changePage(pagination.current_page - 1)}
+                          disabled={pagination.current_page === 1}
+                        >
+                          <span className="sr-only">Previous</span>
+                          <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                        
+                        {[...Array(pagination.last_page)].map((_, i) => (
+                          <button
+                            key={i + 1}
+                            onClick={() => changePage(i + 1)}
+                            className={`relative inline-flex items-center px-4 py-2 border ${pagination.current_page === i + 1 ? 'bg-[#02615E]/10 border-[#02615E] text-[#02615E]' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'} text-sm font-medium`}
+                          >
+                            {i + 1}
+                          </button>
+                        ))}
+                        
+                        <button 
+                          className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${pagination.current_page === pagination.last_page ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'}`}
+                          onClick={() => pagination.current_page < pagination.last_page && changePage(pagination.current_page + 1)}
+                          disabled={pagination.current_page === pagination.last_page}
+                        >
+                          <span className="sr-only">Next</span>
+                          <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </nav>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                  <button className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                    <span className="sr-only">Previous</span>
-                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+            </div>
+          </>
+        )}
+      </div>
+
+      {showDeleteModal && merchantToDelete && (
+        <div className="fixed inset-0 z-10 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
-                  </button>
-                  <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-[#02615E]">
-                    1
-                  </button>
-                  <button className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                    <span className="sr-only">Next</span>
-                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </nav>
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900">Delete Merchant</h3>
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500">
+                        Are you sure you want to delete the merchant "{merchantToDelete.business_name}"? This action cannot be undone.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={() => deleteMerchant(merchantToDelete.id)}
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#02615E] sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setMerchantToDelete(null);
+                  }}
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
