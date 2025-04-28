@@ -317,6 +317,24 @@ function HomePage() {
           </div>
         </div>
       )}
+
+      {isPageLoaded && (
+        <div className="fixed bottom-6 right-6 z-30">
+          <button 
+            onClick={() => setShowLocationModal(true)}
+            className="bg-white text-[#02615E] shadow-lg rounded-full p-3.5 flex items-center justify-center hover:bg-[#02615E] hover:text-white transition-colors border border-[#02615E]/10 group"
+            aria-label="Change location"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span className="absolute right-full mr-3 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+              Change Location
+            </span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

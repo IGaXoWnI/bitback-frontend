@@ -9,6 +9,8 @@ import PartnerSignupPage from "./pages/partnerSignupPage";
 import MerchantDashboard from "./pages/MerchantDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import MyReservations from "./pages/MyReservations";
+import MyReclamations from "./pages/MyReclamations";
+import MyReports from "./pages/MyReports";
 
 
 const AppRoutes: React.FC = () => {
@@ -24,6 +26,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/merchant" element={<MerchantDashboard />} /> {/* Fallback route */}
       <Route path="/admin" element={<AdminDashboard />} /> {/* Fallback route */}
       <Route path="/reservations" element={<MyReservations />} />
+      <Route path="/reclamations" element={<MyReclamations />} />
     </Routes>
   );
 };
