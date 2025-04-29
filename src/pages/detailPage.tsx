@@ -51,6 +51,10 @@ function DetailPage() {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorDetails, setErrorDetails] = useState('');
 
+  const [isReserved, setIsReserved] = useState(false);
+  const [checkingReservation, setCheckingReservation] = useState(false);
+  const [reservationId, setReservationId] = useState<number | null>(null);
+
   useEffect(() => {
     async function fetchData() {
       try {
@@ -70,6 +74,50 @@ function DetailPage() {
     }
     
     fetchData();
+  }, [id]);
+
+  useEffect(() => {
+    const checkIfReserved = async () => {
+      if (!id || !localStorage.getItem('token')) return;
+      
+      setCheckingReservation(true);
+      try {
+        // First check if the box is reserved
+        const isReservedResponse = await api.get(`/isReserved/${id}`);
+        
+        if (isReservedResponse.data.success && isReservedResponse.data.is_reserved) {
+          setIsReserved(true);
+          
+          // If it's reserved, get the reservation details to find the reservation ID
+          const reservationsResponse = await api.get('/reservations/user');
+          if (reservationsResponse.data.success && 
+              reservationsResponse.data.data && 
+              reservationsResponse.data.data.data) {
+            
+            const userReservations = reservationsResponse.data.data.data;
+            // Find the reservation for this specific box
+            const thisBoxReservation = userReservations.find(
+              (res: any) => Number(res.box_id) === Number(id) && 
+                            res.status !== 'picked_up' && 
+                            res.status !== 'canceled'
+            );
+            
+            if (thisBoxReservation) {
+              setReservationId(thisBoxReservation.id);
+              console.log("Found reservation ID:", thisBoxReservation.id);
+            }
+          }
+        } else {
+          setIsReserved(false);
+        }
+      } catch (error) {
+        console.error('Error checking reservation status:', error);
+      } finally {
+        setCheckingReservation(false);
+      }
+    };
+    
+    checkIfReserved();
   }, [id]);
 
   const handleReserveClick = async () => {
@@ -165,6 +213,29 @@ function DetailPage() {
       console.error("Report submission error:", error);
     } finally {
       setIsSubmittingReport(false);
+    }
+  };
+
+  const handleConfirmPickup = async () => {
+    if (!reservationId) {
+      toast.error('Unable to find your reservation. Please try again from your reservations page.');
+      return;
+    }
+    
+    try {
+      // Use the new endpoint with the reservation ID
+      const response = await api.post(`/confirmPickup/${reservationId}`);
+      
+      if (response.data.success) {
+        toast.success('Pickup confirmed successfully!');
+        // Navigate to reservations page after confirmation
+        navigate('/reservations');
+      } else {
+        toast.error(response.data.message || 'Failed to confirm pickup');
+      }
+    } catch (error) {
+      console.error('Error confirming pickup:', error);
+      toast.error('Failed to confirm pickup. Please try again.');
     }
   };
 
@@ -386,6 +457,18 @@ function DetailPage() {
                 Back to Explore
               </button>
 
+              {isReserved && (
+                <button
+                  onClick={handleConfirmPickup}
+                  className="w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Confirm Pickup
+                </button>
+              )}
+              
               <button 
                 onClick={() => setShowReportModal(true)}
                 className="mt-3 py-3 rounded-xl border-2 border-red-200 text-red-600 font-medium hover:bg-red-50 flex items-center justify-center transition-colors"
