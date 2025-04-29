@@ -6,7 +6,6 @@ import { toast } from 'react-toastify';
 import SuccessModal from '../components/modals/SuccessModal';
 import ErrorModal from '../components/modals/ErrorModal';
 import ReportModal from '../components/modals/ReportModal';
-import ReviewModal from '../components/modals/ReviewModal';
 
 interface FoodItemDetail {
   id: number;
@@ -55,18 +54,6 @@ function DetailPage() {
   const [isReserved, setIsReserved] = useState(false);
   const [checkingReservation, setCheckingReservation] = useState(false);
   const [reservationId, setReservationId] = useState<number | null>(null);
-
-  const [canReview, setCanReview] = useState(false);
-  const [pickedUpReservationId, setPickedUpReservationId] = useState<number | null>(null);
-  const [showReviewModal, setShowReviewModal] = useState(false);
-
-  const [reviews, setReviews] = useState<Array<any>>([]);
-  const [loadingReviews, setLoadingReviews] = useState(false);
-  const [reviewsPage, setReviewsPage] = useState(1);
-  const [hasMoreReviews, setHasMoreReviews] = useState(false);
-
-  const [avgRating, setAvgRating] = useState("0.0");
-  const [reviewCount, setReviewCount] = useState(0);
 
   useEffect(() => {
     async function fetchData() {
@@ -131,90 +118,6 @@ function DetailPage() {
     };
     
     checkIfReserved();
-  }, [id]);
-
-  useEffect(() => {
-    const checkIfCanReview = async () => {
-      if (!id || !localStorage.getItem('token')) return;
-      
-      try {
-        // Get user's reservations
-        const response = await api.get('/reservations/user');
-        
-        if (response.data.success && 
-            response.data.data && 
-            response.data.data.data) {
-          
-          const userReservations = response.data.data.data;
-          // Find if there's a picked_up reservation for this box
-          const pickedUpReservation = userReservations.find(
-            (res: any) => Number(res.box_id) === Number(id) && res.status === 'picked_up'
-          );
-          
-          if (pickedUpReservation) {
-            setCanReview(true);
-            setPickedUpReservationId(pickedUpReservation.id);
-          }
-        }
-      } catch (error) {
-        console.error('Error checking review eligibility:', error);
-      }
-    };
-    
-    checkIfCanReview();
-  }, [id]);
-
-  useEffect(() => {
-    const fetchReviews = async () => {
-      if (!id) return;
-      
-      setLoadingReviews(true);
-      try {
-        const response = await api.get(`/review/${id}?page=${reviewsPage}`);
-        
-        if (response.data.success && response.data.data) {
-          // For first page, replace reviews; otherwise append
-          if (reviewsPage === 1) {
-            setReviews(response.data.data.data || []);
-          } else {
-            setReviews(prev => [...prev, ...(response.data.data.data || [])]);
-          }
-          
-          // Check if there are more pages
-          setHasMoreReviews(
-            response.data.data.current_page < response.data.data.last_page
-          );
-        }
-      } catch (error) {
-        console.error('Error fetching reviews:', error);
-      } finally {
-        setLoadingReviews(false);
-      }
-    };
-    
-    fetchReviews();
-  }, [id, reviewsPage]);
-
-  useEffect(() => {
-    // Only fetch if we have an ID
-    if (!id) return;
-    
-    // Function to get the rating
-    const fetchRating = async () => {
-      try {
-        const response = await api.get(`/getAvgRating/${id}`);
-        
-        if (response.data.success) {
-          // Store the rating data
-          setAvgRating(parseFloat(response.data.data.average_rating).toFixed(1));
-          setReviewCount(response.data.data.reviews_count);
-        }
-      } catch (error) {
-        console.error("Error fetching rating:", error);
-      }
-    };
-    
-    fetchRating();
   }, [id]);
 
   const handleReserveClick = async () => {
@@ -336,12 +239,6 @@ function DetailPage() {
     }
   };
 
-  const loadMoreReviews = () => {
-    if (hasMoreReviews && !loadingReviews) {
-      setReviewsPage(prev => prev + 1);
-    }
-  };
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (reportModalRef.current && !reportModalRef.current.contains(event.target as Node)) {
@@ -453,10 +350,7 @@ function DetailPage() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                 </svg>
-                <span className="ml-1 text-gray-700 font-medium">{avgRating}</span>
-                {reviewCount > 0 && (
-                  <span className="ml-1 text-gray-500">({reviewCount})</span>
-                )}
+                <span className="ml-1 text-gray-700 font-medium">{item.rating}</span>
               </div>
               
               <span className="mx-3 text-gray-300">|</span>
@@ -574,18 +468,6 @@ function DetailPage() {
                   Confirm Pickup
                 </button>
               )}
-
-              {canReview && pickedUpReservationId && (
-                <button
-                  onClick={() => setShowReviewModal(true)}
-                  className="w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center bg-yellow-500 hover:bg-yellow-600 text-white shadow-lg hover:shadow-xl"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                  </svg>
-                  Rate & Review
-                </button>
-              )}
               
               <button 
                 onClick={() => setShowReportModal(true)}
@@ -655,123 +537,6 @@ function DetailPage() {
             </div>
           </div>
         )}
-
-        {/* Reviews Section */}
-        <div className="mt-10 bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-            Reviews
-            {reviewCount > 0 && (
-              <span className="ml-2 text-sm bg-[#02615E] text-white px-2 py-1 rounded-full">
-                {reviewCount}
-              </span>
-            )}
-          </h2>
-          
-          {loadingReviews && reviewsPage === 1 ? (
-            // Loading skeleton
-            <div className="space-y-6">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="flex items-start">
-                    <div className="h-10 w-10 bg-gray-200 rounded-full mr-3"></div>
-                    <div className="flex-1">
-                      <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/6 mb-3"></div>
-                      <div className="h-20 bg-gray-200 rounded w-full"></div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : reviews.length === 0 ? (
-            // No reviews state
-            <div className="py-12 flex flex-col items-center justify-center text-center">
-              <div className="bg-[#F9F3F0] p-5 rounded-full mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-[#02615E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">No Reviews Yet</h3>
-              <p className="text-gray-500 max-w-md mx-auto mb-6">
-                Be the first to share your experience with this food box.
-              </p>
-              {canReview && pickedUpReservationId && (
-                <button
-                  onClick={() => setShowReviewModal(true)}
-                  className="px-5 py-2.5 bg-[#02615E] text-white rounded-lg font-medium hover:bg-[#024e4b] transition-colors"
-                >
-                  Write a Review
-                </button>
-              )}
-            </div>
-          ) : (
-            // Reviews list
-            <div className="space-y-8">
-              {reviews.map((review: any) => (
-                <div key={review.id} className="border-b border-gray-100 pb-6 last:border-0">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-start">
-                      <div className="h-12 w-12 bg-[#02615E]/10 text-[#02615E] rounded-full flex items-center justify-center font-bold text-xl mr-4">
-                        {review.user?.name?.charAt(0).toUpperCase() || '?'}
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-gray-900">{review.user?.name || 'Anonymous'}</h3>
-                        <div className="flex mt-1">
-                          {[...Array(5)].map((_, i) => (
-                            <svg 
-                              key={i}
-                              xmlns="http://www.w3.org/2000/svg" 
-                              className={`h-4 w-4 ${i < review.rating ? 'text-yellow-400' : 'text-gray-300'}`}
-                              viewBox="0 0 20 20"
-                              fill="currentColor"
-                            >
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <time className="text-sm text-gray-500">
-                      {new Date(review.created_at).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                      })}
-                    </time>
-                  </div>
-                  
-                  {review.comment && (
-                    <div className="ml-16 bg-gray-50 p-4 rounded-lg">
-                      <p className="text-gray-700">{review.comment}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-              
-              {hasMoreReviews && (
-                <div className="text-center pt-4">
-                  <button 
-                    onClick={loadMoreReviews}
-                    disabled={loadingReviews}
-                    className="px-6 py-2.5 border border-[#02615E] text-[#02615E] rounded-lg font-medium hover:bg-[#02615E]/5 transition-colors disabled:opacity-50"
-                  >
-                    {loadingReviews ? (
-                      <span className="flex items-center">
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-[#02615E]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Loading...
-                      </span>
-                    ) : (
-                      'Load More Reviews'
-                    )}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
       </div>
 
       <ReportModal
@@ -799,17 +564,6 @@ function DetailPage() {
         onClose={() => setShowErrorModal(false)}
         errorMessage={errorDetails}
       />
-
-      {showReviewModal && item && pickedUpReservationId && (
-        <ReviewModal
-          isOpen={showReviewModal}
-          onClose={() => setShowReviewModal(false)}
-          reservationId={pickedUpReservationId}
-          boxTitle={item.title}
-          businessName={item.business?.name || ''}
-          imageUrl={item.image}
-        />
-      )}
     </div>
   );
 }
