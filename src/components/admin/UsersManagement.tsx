@@ -9,7 +9,11 @@ interface User {
   role: string;
   created_at: string;
   updated_at: string;
-  is_active: boolean;
+  status: string; // Change from is_active: boolean
+  latitude: string | null;
+  longitude: string | null;
+  zone: string | null;
+  address: string | null;
 }
 
 interface PaginationData {
@@ -92,6 +96,41 @@ function UsersManagement() {
     }
   };
 
+  const changeUserStatus = async (userId: number, currentStatus: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      // Toggle between 'active' and 'inactive'
+      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+      
+      const response = await axios.post(`http://127.0.0.1:8000/api/changeStatus/${userId}`, {
+        status: newStatus // Send the new status as a string
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.data && response.data.success) {
+        // Update the user status in the state
+        const updatedUsers = users.map(user => {
+          if (user.id === userId) {
+            return { ...user, status: newStatus };
+          }
+          return user;
+        });
+        
+        setUsers(updatedUsers);
+        toast.success(`User status changed to ${newStatus}`);
+      } else {
+        toast.error('Failed to update user status');
+      }
+    } catch (err) {
+      toast.error('Error updating user status');
+      console.error(err);
+    }
+  };
+
   const handleDeleteClick = (user: User) => {
     setUserToDelete(user);
     setShowDeleteModal(true);
@@ -111,8 +150,7 @@ function UsersManagement() {
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = selectedStatus === 'all' || 
-      (selectedStatus === 'Active' && user.is_active) || 
-      (selectedStatus === 'Inactive' && !user.is_active);
+      selectedStatus === user.status;
     
     return matchesSearch && matchesStatus;
   });
@@ -246,13 +284,26 @@ function UsersManagement() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                            ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
+                            ${user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
                           `}>
-                            {user.is_active ? 'Active' : 'Inactive'}
+                            {user.status === 'active' ? 'Active' : 'Inactive'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(user.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <select
+                            value={user.status}
+                            onChange={(e) => changeUserStatus(user.id, user.status)}
+                            className={`text-sm border-gray-300 rounded-md focus:ring-[#02615E] focus:border-[#02615E] 
+                              ${user.status === 'active' 
+                                ? 'bg-green-50 text-green-800' 
+                                : 'bg-gray-50 text-gray-800'}`}
+                          >
+                            <option value="active">Set Active</option>
+                            <option value="inactive">Set Inactive</option>
+                          </select>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button 

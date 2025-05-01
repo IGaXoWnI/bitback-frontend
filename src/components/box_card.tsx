@@ -9,8 +9,8 @@ interface FoodItemCardProps {
     original: number;
     discounted: number;
   };
-  rating: number | string; // Allow both number and string formats
-  reviewCount?: number; // Add reviewCount prop
+  rating: number | string; 
+  reviewCount?: number; 
   restaurant: string;
   pickupTime: string;
   distance: string;

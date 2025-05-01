@@ -4,9 +4,14 @@ import { Offer } from '../../../types/merchant';
 interface OffersListProps {
   offers: Offer[];
   handleChangeOfferStatus: (id: number, newStatus: 'Active' | 'Inactive' | 'Sold Out') => void;
+  handleEditOffer: (offer: Offer) => void;
 }
 
-const OffersList: React.FC<OffersListProps> = ({ offers = [], handleChangeOfferStatus }) => {
+const OffersList: React.FC<OffersListProps> = ({ 
+  offers = [], 
+  handleChangeOfferStatus,
+  handleEditOffer
+}) => {
   if (!offers || offers.length === 0) {
     return (
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
@@ -42,13 +47,10 @@ const OffersList: React.FC<OffersListProps> = ({ offers = [], handleChangeOfferS
                 Price
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Quantity
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Expires
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Quantity
               </th>
               <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
@@ -56,82 +58,55 @@ const OffersList: React.FC<OffersListProps> = ({ offers = [], handleChangeOfferS
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {offers.map((offer) => {
-              // Add safety checks for all fields
-              const discountedPrice = offer.discountedPrice ? Number(offer.discountedPrice) : 0;
-              const originalPrice = offer.originalPrice ? Number(offer.originalPrice) : 0;
-              const quantity = offer.quantity || 0;
-              const title = offer.title || 'Unnamed Offer';
-              const status = offer.status || 'Inactive';
-
-              // Format the expiry date safely
-              let formattedExpiry = 'N/A';
-              if (offer.expiresAt) {
-                try {
-                  const expiryDate = new Date(offer.expiresAt);
-                  formattedExpiry = expiryDate.toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  });
-                } catch (e) {
-                  console.error('Invalid date format', offer.expiresAt);
-                }
-              }
-              
-              return (
-                <tr key={offer.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{title}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">${discountedPrice.toFixed(2)}</div>
-                    <div className="text-sm text-gray-500 line-through">${originalPrice.toFixed(2)}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {quantity} available
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formattedExpiry}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                      ${status === 'Active' ? 'bg-green-100 text-green-800' : 
-                        status === 'Sold Out' ? 'bg-yellow-100 text-yellow-800' : 
-                        'bg-gray-100 text-gray-800'}`}>
-                      {status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end space-x-2">
-                      {status === 'Active' ? (
-                        <>
-                          <button 
-                            onClick={() => handleChangeOfferStatus(offer.id, 'Inactive')}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Deactivate
-                          </button>
-                        
-                        </>
-                      ) : (
-                        <button 
-                          onClick={() => handleChangeOfferStatus(offer.id, 'Active')}
-                          className="text-[#02615E] hover:text-[#02615E]/80"
-                          disabled={quantity === 0}
-                        >
-                          Activate
-                        </button>
-                      )}
-                      <button className="text-[#02615E] hover:text-[#02615E]/80">
-                        Edit
-                      </button>
+            {offers.map((offer) => (
+              <tr key={offer.id}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 h-10 w-10">
+                      <img className="h-10 w-10 rounded-full object-cover" src={offer.image} alt="" />
                     </div>
-                  </td>
-                </tr>
-              );
-            })}
+                    <div className="ml-4">
+                      <div className="text-sm font-medium text-gray-900">{offer.title}</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">${offer.discountedPrice}</div>
+                  <div className="text-sm text-gray-500">
+                    <span className="line-through">${offer.originalPrice}</span>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                    ${offer.status === 'Active' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'}`}
+                  >
+                    {offer.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {offer.quantity}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <div className="flex justify-end space-x-3">
+                    <button 
+                      onClick={() => handleChangeOfferStatus(offer.id, offer.status === 'Active' ? 'Inactive' : 'Active')}
+                      className={`${offer.status === 'Active' ? 'text-red-600' : 'text-green-600'} hover:underline`}
+                    >
+                      {offer.status === 'Active' ? 'Deactivate' : 'Activate'}
+                    </button>
+                    
+                    <button 
+                      onClick={() => handleEditOffer(offer)}
+                      className="text-blue-600 hover:underline"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

@@ -9,6 +9,7 @@ interface User {
   role: string;
   created_at: string;
   updated_at: string;
+  status: string;
 }
 
 interface Business {
@@ -22,6 +23,7 @@ interface Business {
   created_at: string;
   updated_at: string;
   user: User;
+  is_active: boolean; // Add this line
 }
 
 interface PaginationData {
@@ -101,6 +103,47 @@ function MerchantsManagement() {
     } finally {
       setShowDeleteModal(false);
       setMerchantToDelete(null);
+    }
+  };
+
+  const changeMerchantStatus = async (userId: number, currentStatus: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      // Set the new status to the opposite of the current one
+      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+      
+      const response = await axios.post(`http://127.0.0.1:8000/api/changeStatus/${userId}`, {
+        status: newStatus // Send the new status as a string
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.data && response.data.success) {
+        // Update the merchant status in the state
+        const updatedMerchants = merchants.map(merchant => {
+          if (merchant.user.id === userId) {
+            return { 
+              ...merchant, 
+              user: {
+                ...merchant.user,
+                status: newStatus
+              }
+            };
+          }
+          return merchant;
+        });
+        
+        setMerchants(updatedMerchants);
+        toast.success(`Merchant status changed to ${newStatus}`);
+      } else {
+        toast.error('Failed to update merchant status');
+      }
+    } catch (err) {
+      toast.error('Error updating merchant status');
+      console.error(err);
     }
   };
 
@@ -226,6 +269,9 @@ function MerchantsManagement() {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Joined
                     </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
                     <th scope="col" className="relative px-6 py-3">
                       <span className="sr-only">Actions</span>
                     </th>
@@ -234,7 +280,7 @@ function MerchantsManagement() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredMerchants.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500">
+                      <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
                         No merchants found
                       </td>
                     </tr>
@@ -265,13 +311,42 @@ function MerchantsManagement() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(merchant.created_at).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button 
-                            className="text-red-600 hover:text-red-800"
-                            onClick={() => handleDeleteClick(merchant)}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <select
+                            value={merchant.user.status} // Change this to use user.status instead of is_active
+                            onChange={(e) => changeMerchantStatus(merchant.user.id, merchant.user.status)}
+                            className={`form-select rounded-md border-gray-300 shadow-sm focus:border-[#02615E] focus:ring-[#02615E] 
+                              ${merchant.user.status === 'active'
+                                ? 'bg-green-50 text-green-800' 
+                                : 'bg-gray-50 text-gray-800'}`}
                           >
-                            Delete
-                          </button>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                          </select>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <div className="flex items-center space-x-2">
+                            {/* Status Dropdown */}
+                            <select
+                              value={merchant.user.status}
+                              onChange={(e) => changeMerchantStatus(merchant.user.id, merchant.user.status)}
+                              className="text-sm border-gray-300 rounded-md focus:ring-[#02615E] focus:border-[#02615E]"
+                            >
+                              <option value="active">Set Active</option>
+                              <option value="inactive">Set Inactive</option>
+                            </select>
+                            
+                            {/* Delete Button */}
+                            <button
+                              onClick={() => {
+                                setMerchantToDelete(merchant);
+                                setShowDeleteModal(true);
+                              }}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))

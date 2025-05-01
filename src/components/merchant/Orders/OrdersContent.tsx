@@ -20,7 +20,6 @@ const OrdersContent: React.FC<OrdersContentProps> = ({ orders, handleChangeOrder
     <div>
       <h1 className="text-2xl font-semibold text-gray-900 mb-6">Manage Orders</h1>
       
-      {/* Orders List */}
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
           <h3 className="text-lg leading-6 font-medium text-gray-900">All Orders</h3>

@@ -21,7 +21,7 @@ const OfferForm: React.FC<OfferFormProps> = ({
       const file = e.target.files[0];
       setNewOffer({...newOffer, image: file});
       
-      // Create preview URL
+
       const reader = new FileReader();
       reader.onload = () => {
         setPreviewImage(reader.result as string);
@@ -39,7 +39,6 @@ const OfferForm: React.FC<OfferFormProps> = ({
       <div className="px-6 py-6 sm:p-8">
         <form onSubmit={handleNewOfferSubmit} className="space-y-8">
           <div className="grid grid-cols-1 gap-y-8 gap-x-6 sm:grid-cols-6">
-            {/* Title field */}
             <div className="sm:col-span-4">
               <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
                 Offer Title
@@ -59,7 +58,6 @@ const OfferForm: React.FC<OfferFormProps> = ({
               <p className="mt-1 text-xs text-gray-500">Create a compelling title for your offer</p>
             </div>
 
-            {/* Description field */}
             <div className="sm:col-span-6">
               <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
                 Description
@@ -78,7 +76,6 @@ const OfferForm: React.FC<OfferFormProps> = ({
               <p className="mt-1 text-xs text-gray-500">Be specific about what's included in your offer</p>
             </div>
 
-            {/* Image upload field */}
             <div className="sm:col-span-6">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Offer Image
@@ -131,12 +128,10 @@ const OfferForm: React.FC<OfferFormProps> = ({
               </div>
             </div>
 
-            {/* Price and quantity section */}
             <div className="sm:col-span-6">
               <div className="bg-gray-50 px-6 py-5 rounded-lg">
                 <h4 className="text-sm font-medium text-gray-900 mb-4">Pricing & Availability</h4>
                 <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-3">
-                  {/* Original Price field */}
                   <div>
                     <label htmlFor="originalPrice" className="block text-sm font-medium text-gray-700 mb-1">
                       Original Price ($)
@@ -160,7 +155,6 @@ const OfferForm: React.FC<OfferFormProps> = ({
                     </div>
                   </div>
 
-                  {/* Discounted Price field */}
                   <div>
                     <label htmlFor="discountedPrice" className="block text-sm font-medium text-gray-700 mb-1">
                       Sale Price ($)
@@ -184,7 +178,6 @@ const OfferForm: React.FC<OfferFormProps> = ({
                     </div>
                   </div>
 
-                  {/* Quantity field */}
                   <div>
                     <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">
                       Quantity Available
@@ -207,7 +200,6 @@ const OfferForm: React.FC<OfferFormProps> = ({
               </div>
             </div>
             
-            {/* Pickup Time field - Updated to time inputs */}
             <div className="sm:col-span-6">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Pickup Time Window
@@ -261,7 +253,6 @@ const OfferForm: React.FC<OfferFormProps> = ({
               <p className="mt-2 text-xs text-gray-500">Specify the time window when customers can pick up this offer</p>
             </div>
 
-            {/* Is Active toggle */}
             <div className="sm:col-span-6">
               <div className="border-t border-gray-200 pt-6">
                 <div className="flex items-center justify-between">
@@ -295,7 +286,7 @@ const OfferForm: React.FC<OfferFormProps> = ({
             </div>
           </div>
 
-          {/* Form actions */}
+
           <div className="pt-3 border-t border-gray-200 flex justify-end space-x-4">
             <button
               type="button"
