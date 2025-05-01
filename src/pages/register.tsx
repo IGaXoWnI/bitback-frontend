@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom"; // Add useNavigate
+import { Link, useNavigate } from "react-router-dom"; 
 import api from "../api.tsx";
 
 function Register() {
-  const navigate = useNavigate(); // Add this
+  const navigate = useNavigate(); 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,21 +16,17 @@ function Register() {
 
     try {
       const response = await api.post("/register", { name, email, password, role });
-      
-      // Update this line to match the login pattern
-      // Check both possible token locations
+   
       const token = response.data.autorisations?.token || response.data.token;
       
-      // Save token and user data
+
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
       
-      // Also save user data like in login
       if (response.data.user) {
         localStorage.setItem("user", JSON.stringify(response.data.user));
       }
       
-      // Navigate with registration flag
       navigate("/home", { 
         state: { 
           fromRegistration: true
