@@ -354,7 +354,7 @@ function MerchantDashboard() {
       }
 
       // Use the endpoint for editing boxes
-      const response = await api.put(`/boxes/business/${editingOffer.id}`, formData, {
+      const response = await api.post(`/boxes/business/${editingOffer.id}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 

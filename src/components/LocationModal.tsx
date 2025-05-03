@@ -53,21 +53,19 @@ interface LocationModalProps {
 }
 
 const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
-  const [radius, setRadius] = useState(5); // Default radius in km
+  const [radius, setRadius] = useState(5);
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
   const [position, setPosition] = useState<[number, number] | null>(null);
   const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null);
-  const [mapKey, setMapKey] = useState(Date.now()); // For forcing re-render
+  const [mapKey, setMapKey] = useState(Date.now());
   const mapRef = useRef(null);
   
-  // Initialize map when modal opens
   useEffect(() => {
     if (isOpen) {
       requestLocationAccess();
       
-      // Force map to resize after modal is fully visible
       const timer = setTimeout(() => {
         setMapKey(Date.now());
         if (mapRef.current) {
@@ -80,9 +78,8 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
       
       return () => clearTimeout(timer);
     }
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
-  // Request location from browser
   const requestLocationAccess = () => {
     setStatus('loading');
     setError('');
@@ -94,12 +91,11 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
       return;
     }
     
-    // Add timeout handling for geolocation requests
     const geolocationTimeout = setTimeout(() => {
       setError('Location request timed out. Using default location instead.');
       setStatus('error');
       setFallbackLocation();
-    }, 15000); // 15 seconds timeout
+    }, 15000);
     
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -116,7 +112,6 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
         clearTimeout(geolocationTimeout);
         console.error('Geolocation error:', error);
         
-        // More descriptive error messages based on error code
         let errorMessage = 'Unable to get your location.';
         
         if (error.code === 1) {
@@ -132,22 +127,19 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
         setFallbackLocation();
       },
       { 
-        enableHighAccuracy: false, // Try with standard accuracy first
+        enableHighAccuracy: false,
         timeout: 10000,
-        maximumAge: 60000 // Accept positions up to 1 minute old
+        maximumAge: 60000
       }
     );
   };
   
-  // Set fallback location if geolocation fails
   const setFallbackLocation = () => {
-    // Default to Casablanca, Morocco
     const fallbackPosition: [number, number] = [33.5731, -7.5898];
     setPosition(fallbackPosition);
     setMarkerPosition(fallbackPosition);
   };
   
-  // Handle marker drag end
   const handleMarkerDragEnd = (event: { target: any }) => {
     const marker = event.target;
     const position = marker.getLatLng();
@@ -155,20 +147,17 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
     setMarkerPosition(newPosition);
   };
 
-  // Handle map click to manually set location
   const handleMapClick = (e:any) => {
     if (status === 'error' || status === 'success') {
       const clickedPosition: [number, number] = [e.latlng.lat, e.latlng.lng];
       setMarkerPosition(clickedPosition);
       
-      // If we're in error state, also set the main position to center the map
       if (status === 'error') {
         setPosition(clickedPosition);
       }
     }
   };
   
-  // Save location and radius to database
   const handleSave = async () => {
     if (!markerPosition) {
       setError('Please allow location access before saving');
@@ -181,11 +170,10 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
       const response = await api.post('/user/update-location', {
         latitude: markerPosition[0],
         longitude: markerPosition[1],
-        zone: radius // zone in km
+        zone: radius
       });
       
       if (response.data.success) {
-        // Save locally for immediate use
         localStorage.setItem('userLocation', JSON.stringify({
           latitude: markerPosition[0],
           longitude: markerPosition[1],
@@ -267,7 +255,7 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
                 {markerPosition && (
                   <Circle
                     center={markerPosition}
-                    radius={radius * 1000} // Convert km to meters
+                    radius={radius * 1000}
                     pathOptions={{
                       fillColor: '#02615E',
                       fillOpacity: 0.1,

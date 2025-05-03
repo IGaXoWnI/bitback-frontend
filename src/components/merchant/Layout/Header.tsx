@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -9,6 +9,22 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ isDropdownOpen, setIsDropdownOpen, handleLogout }) => {
+  const [businessName, setBusinessName] = useState('Business Dashboard');
+  
+  useEffect(() => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        const parsedUser = JSON.parse(userData);
+        if (parsedUser && parsedUser.name) {
+          setBusinessName(parsedUser.name);
+        }
+      }
+    } catch (error) {
+      console.error('Error reading business name from localStorage:', error);
+    }
+  }, []);
+
   return (
     <div className="bg-white shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -35,7 +51,7 @@ const Header: React.FC<HeaderProps> = ({ isDropdownOpen, setIsDropdownOpen, hand
             </motion.button>
             
             <div className="relative flex items-center">
-              <span className="text-sm font-medium text-gray-700 mr-2">Artisan Bakery</span>
+              <span className="text-sm font-medium text-gray-700 mr-2">{businessName}</span>
               <div className="relative">
                 <motion.button
                   id="avatarButton"
@@ -59,28 +75,6 @@ const Header: React.FC<HeaderProps> = ({ isDropdownOpen, setIsDropdownOpen, hand
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <Link
-                        to="/profile"
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150"
-                        onClick={() => setIsDropdownOpen(false)}
-                      >
-                        <svg className="mr-2 h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                        Profile
-                      </Link>
-                      <Link
-                        to="/settings"
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150"
-                        onClick={() => setIsDropdownOpen(false)}
-                      >
-                        <svg className="mr-2 h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        Settings
-                      </Link>
-                      <div className="border-t border-gray-100 my-1"></div>
                       <button
                         onClick={handleLogout}
                         className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-150"

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import FoodItemCard from '../components/box_card';
-import FilterSidebar from '../components/filterSideBar';
+import FilterSidebar, { FilterState } from '../components/filterSideBar';
 import Navbar from '../components/Navbar'; 
 import LocationModal from '../components/LocationModal';
 import SkeletonLoader from '../components/SkeletonLoader';
@@ -38,14 +38,12 @@ function HomePage() {
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
+  const [originalFoodItems, setOriginalFoodItems] = useState<FoodItem[]>([]);
   const [isLoadingFoodItems, setIsLoadingFoodItems] = useState(true);
-  const [filters, setFilters] = useState({
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState<FilterState>({
     sortBy: 'default',
-    offers: false,
-    bestRated: false,
-    priceRange: [],
-    maxDeliveryFee: 5,
-    dietaryOptions: [],
+    priceRange: [0, 50],
   });
   const [locationUpdated, setLocationUpdated] = useState(0);
 
@@ -77,12 +75,15 @@ function HomePage() {
             })
             .filter(Boolean);
           setFoodItems(boxesData);
+          setOriginalFoodItems(boxesData);
         } else {
           setFoodItems([]);
+          setOriginalFoodItems([]);
         }
       } catch (error) {
         console.error("Error fetching near-me data:", error);
         setFoodItems([]);
+        setOriginalFoodItems([]);
       } finally {
         setIsLoadingFoodItems(false);
       }
@@ -90,27 +91,78 @@ function HomePage() {
     getFoodItems();
   }, [locationUpdated]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (foodItems.length === 0) {
-        setFoodItems([{
-          id: 1,
-          title: "Sample Food Box",
-          description: "A delicious sample food box",
-          original_price: 15.99,
-          discounted_price: 5.99,
-          image: "https://via.placeholder.com/300",
-          pickup_time: "18:00-20:00",
-          rating: 4.5,
-          is_active: true
-        }]);
-      }
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [foodItems]);
+  // useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     if (foodItems.length === 0) {
+  //       const sampleItem = {
+  //         id: 1,
+  //         title: "Sample Food Box",
+  //         description: "A delicious sample food box",
+  //         original_price: 15.99,
+  //         discounted_price: 5.99,
+  //         image: "https://via.placeholder.com/300",
+  //         pickup_time: "18:00-20:00",
+  //         rating: 4.5,
+  //         is_active: true
+  //       };
+  //       setFoodItems([sampleItem]);
+  //       setOriginalFoodItems([sampleItem]);
+  //     }
+  //   }, 3000);
+  //   return () => clearTimeout(timer);
+  // }, [foodItems]);
 
-  const handleFiltersChange = () => {
-    // Apply filters to food items
+  // Effect for searching
+  useEffect(() => {
+    const applySearch = () => {
+      if (!searchTerm.trim()) {
+        // If search is empty, just apply filters to original items
+        const filteredItems = applyFilters(originalFoodItems, filters);
+        setFoodItems(filteredItems);
+        return;
+      }
+
+      // Apply search and then filters
+      const term = searchTerm.toLowerCase().trim();
+      const searchResults = originalFoodItems.filter(item => 
+        item.title.toLowerCase().includes(term)
+      );
+      
+      // Apply other filters on top of search results
+      const filteredItems = applyFilters(searchResults, filters);
+      setFoodItems(filteredItems);
+    };
+
+    // Use a slight delay to avoid too many re-renders while typing
+    const debounceTimer = setTimeout(() => {
+      applySearch();
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm, filters, originalFoodItems]);
+
+  const applyFilters = (items: FoodItem[], currentFilters: FilterState): FoodItem[] => {
+    return items.filter((item: FoodItem) => {
+      if (currentFilters.priceRange.length === 2) {
+        const [min, max] = currentFilters.priceRange;
+        if (item.discounted_price < min || item.discounted_price > max) {
+          return false;
+        }
+      }
+      
+      return true;
+    }).sort((a: FoodItem, b: FoodItem) => {
+      if (currentFilters.sortBy === 'price_low') {
+        return a.discounted_price - b.discounted_price;
+      } else if (currentFilters.sortBy === 'price_high') {
+        return b.discounted_price - a.discounted_price;
+      }
+      return 0;
+    });
+  };
+
+  const handleFiltersChange = (newFilters: FilterState): void => {
+    setFilters(newFilters);
   };
   
   const handleLocationModalClose = () => {
@@ -120,6 +172,17 @@ function HomePage() {
     if (location.state?.fromRegistration) {
       navigate(".", { replace: true, state: {} });
     }
+  };
+  
+  // Handle search input
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // The search is already applied via useEffect, so we don't need to do anything here
+    // This just prevents form submission
   };
 
   const renderHero = () => (
@@ -135,7 +198,7 @@ function HomePage() {
         <p className="text-white/90 text-lg max-w-xl mb-8">
           Discover delicious surplus food from local businesses at amazing prices
         </p>
-        <div className="relative max-w-md bg-white rounded-full shadow-lg p-1 pl-4 flex items-center">
+        <form onSubmit={handleSearchSubmit} className="relative max-w-md bg-white rounded-full shadow-lg p-1 pl-4 flex items-center">
           <svg className="w-5 h-5 text-gray-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -143,11 +206,16 @@ function HomePage() {
             type="text" 
             placeholder="Search for food or restaurants..." 
             className="flex-1 py-2 px-1 focus:outline-none text-gray-700"
+            value={searchTerm}
+            onChange={handleSearchChange}
           />
-          <button className="bg-[#02615E] hover:bg-[#024e4b] text-white rounded-full px-6 py-2 transition-colors">
+          <button 
+            type="submit"
+            className="bg-[#02615E] hover:bg-[#024e4b] text-white rounded-full px-6 py-2 transition-colors"
+          >
             Search
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );
@@ -155,20 +223,43 @@ function HomePage() {
   const renderFilters = () => (
     <div className="bg-white rounded-lg shadow-sm p-4 mb-6 flex flex-wrap items-center gap-3">
       <div className="flex overflow-x-auto scrollbar-hide">
-        <button className="whitespace-nowrap bg-[#02615E] text-white px-4 py-2 rounded-full text-sm font-medium">
+        <button 
+          onClick={() => {
+            const resetFilters: FilterState = {
+              sortBy: 'default',
+              priceRange: [0, 50]
+            };
+            setFilters(resetFilters);
+            // The effect will handle the filtering
+          }}
+          className={`whitespace-nowrap ${
+            filters.sortBy === 'default' 
+              ? 'bg-[#02615E] text-white' 
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+          } px-4 py-2 rounded-full text-sm font-medium`}
+        >
           All Items
         </button>
-        <button className="whitespace-nowrap ml-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-700">
-          Best Deals
-        </button>
-        <button className="whitespace-nowrap ml-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-700">
-          Top Rated
-        </button>
-        <button className="whitespace-nowrap ml-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-700 flex items-center">
+        <button 
+          onClick={() => {
+            const newSortBy = filters.sortBy === 'price_low' ? 'price_high' : 'price_low';
+            const sortFilter: FilterState = {
+              ...filters,
+              sortBy: newSortBy
+            };
+            setFilters(sortFilter);
+            // The effect will handle the filtering
+          }}
+          className={`whitespace-nowrap ml-2 ${
+            filters.sortBy === 'price_low' || filters.sortBy === 'price_high' 
+              ? 'bg-[#02615E] text-white' 
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+          } px-4 py-2 rounded-full text-sm font-medium flex items-center`}
+        >
           <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M3 6H21M10 12H21M17 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
-          Sort
+          Sort {filters.sortBy === 'price_low' ? '(Low to High)' : filters.sortBy === 'price_high' ? '(High to Low)' : ''}
         </button>
       </div>
       
@@ -201,9 +292,13 @@ function HomePage() {
             alt="No items" 
             className="w-24 h-24 mb-4 opacity-30"
           />
-          <h3 className="text-xl font-semibold text-gray-700 mb-2">No Food Boxes Available</h3>
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">
+            {searchTerm ? 'No Results Found' : 'No Food Boxes Available'}
+          </h3>
           <p className="text-gray-500 max-w-md">
-            There are no food boxes available in your area right now. Check back soon for delicious offerings!
+            {searchTerm 
+              ? `We couldn't find any food boxes matching "${searchTerm}". Try different keywords or check back later!` 
+              : 'There are no food boxes available in your area right now. Check back soon for delicious offerings!'}
           </p>
         </div>
       );
